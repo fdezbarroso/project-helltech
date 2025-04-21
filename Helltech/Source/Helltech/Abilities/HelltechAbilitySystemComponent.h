@@ -15,6 +15,12 @@ class HELLTECH_API UHelltechAbilitySystemComponent : public UAbilitySystemCompon
 	GENERATED_BODY()
 
 public:
+	UHelltechAbilitySystemComponent();
+
+	bool GetCharacterAbilitiesGiven() const;
+
+	void SetCharacterAbilitiesGiven(const bool AbilitiesGiven);
+
 	UFUNCTION(BlueprintCallable, Category = "GameplayCue")
 	void ExecuteGameplayCueLocal(const FGameplayTag GameplayCueTag,
 	                             const FGameplayCueParameters& GameplayCueParameters) const;
@@ -26,4 +32,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GameplayCue")
 	void RemoveGameplayCueLocal(const FGameplayTag GameplayCueTag,
 	                            const FGameplayCueParameters& GameplayCueParameters) const;
+
+protected:
+	bool CharacterAbilitiesGiven;
 };

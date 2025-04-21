@@ -4,7 +4,7 @@
 #include "Abilities/GameplayAbility.h"
 #include "HelltechGameplayAbility.generated.h"
 
-enum class ELilithAbilityID : uint8;
+enum class EHelltechAbilityID : uint8;
 
 /**
  * Base Gameplay Ability Class.
@@ -20,7 +20,7 @@ public:
 	UHelltechGameplayAbility();
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability")
-	ELilithAbilityID AbilityID;
+	EHelltechAbilityID AbilityID;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cooldown")
 	FScalableFloat CooldownDuration;
