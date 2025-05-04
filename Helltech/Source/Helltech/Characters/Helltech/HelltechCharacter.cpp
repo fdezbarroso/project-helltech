@@ -1,13 +1,25 @@
 #include "HelltechCharacter.h"
 
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
 #include "Abilities/HelltechAbilitySystemComponent.h"
 #include "Abilities/HelltechAttributeSet.h"
+#include "Camera/CameraComponent.h"
 #include "DataAssets/Characters/HelltechDataAsset.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/SpringArmComponent.h"
 
 AHelltechCharacter::AHelltechCharacter()
 {
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::Type::NoCollision);
+
+	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
+	SpringArm->SetupAttachment(RootComponent);
+	SpringArm->bUsePawnControlRotation = true;
+
+	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
+	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
+	Camera->bUsePawnControlRotation = false;
 }
 
 void AHelltechCharacter::PossessedBy(AController* NewController)
@@ -42,6 +54,61 @@ void AHelltechCharacter::PossessedBy(AController* NewController)
 void AHelltechCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
+
+	if (const APlayerController* PlayerController = Cast<APlayerController>(GetController()))
+	{
+		if (UEnhancedInputLocalPlayerSubsystem* PlayerSubsystem = ULocalPlayer::GetSubsystem<
+			UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		{
+			if (InputMappingContext)
+			{
+				PlayerSubsystem->AddMappingContext(InputMappingContext, 0);
+			}
+		}
+	}
+
+	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		EnhancedInputComponent->BindAction(MoveInputAction, ETriggerEvent::Triggered, this,
+		                                   &AHelltechCharacter::EnhancedInputMove);
+
+		EnhancedInputComponent->BindAction(LookInputAction, ETriggerEvent::Triggered, this,
+		                                   &AHelltechCharacter::EnhancedInputLook);
+	}
+}
+
+void AHelltechCharacter::EnhancedInputMove(const FInputActionValue& InputValue)
+{
+	if (!Controller)
+	{
+		return;
+	}
+
+	const FVector2D CurrentMoveVector = InputValue.Get<FVector2D>();
+
+	const FRotator Rotator = Controller->GetControlRotation();
+	const FRotator YawRotation(0.0f, Rotator.Yaw, 0.0f);
+
+	const FVector ForwardDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X);
+	const FVector RightDirection = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
+
+	AddMovementInput(ForwardDirection, CurrentMoveVector.Y);
+	AddMovementInput(RightDirection, CurrentMoveVector.X);
+}
+
+void AHelltechCharacter::EnhancedInputLook(const FInputActionValue& InputValue)
+{
+	if (!Controller)
+	{
+		return;
+	}
+
+	const FVector2D CurrentLookVector = InputValue.Get<FVector2D>();
+
+	AddControllerYawInput(CurrentLookVector.X);
+
+	// Negate pitch because inverted Y-axis is for weird people :)
+	AddControllerPitchInput(-CurrentLookVector.Y);
 }
 
 void AHelltechCharacter::MoveSpeedChanged(const FOnAttributeChangeData& Data)

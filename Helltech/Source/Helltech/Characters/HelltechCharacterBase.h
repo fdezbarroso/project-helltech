@@ -25,14 +25,14 @@ class HELLTECH_API AHelltechCharacterBase : public ACharacter
 public:
 	AHelltechCharacterBase();
 
-	UFUNCTION(BlueprintCallable, Category = "Character|Damage")
+	UFUNCTION(BlueprintCallable, Category = "Character | Damage")
 	virtual void ApplyDamageToTarget(AHelltechCharacterBase* Target, const float DamageAmount);
 
 	virtual UHelltechAbilitySystemComponent* GetAbilitySystemComponent() const;
 
 	virtual UHelltechAttributeSet* GetAttributeSet() const;
 
-	UFUNCTION(BlueprintCallable, Category = "Character")
+	UFUNCTION(BlueprintCallable, Category = "Character | Attributes")
 	virtual int GetAbilityLevel(EHelltechAbilityID AbilityID) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Character | Attributes")

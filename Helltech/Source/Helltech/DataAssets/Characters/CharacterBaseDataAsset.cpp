@@ -20,6 +20,9 @@ void UCharacterBaseDataAsset::InitializeAttributes(UAbilitySystemComponent* Abil
 	AbilitySystemComponent->SetNumericAttributeBase(UHelltechAttributeSet::GetAccelerationAttribute(),
 	                                                Acceleration.GetValueAtLevel(Level));
 
+	AbilitySystemComponent->SetNumericAttributeBase(UHelltechAttributeSet::GetMaxHealthAttribute(),
+	                                                MaxHealth.GetValueAtLevel(Level));
+
 	AbilitySystemComponent->SetNumericAttributeBase(UHelltechAttributeSet::GetHealthAttribute(),
 	                                                MaxHealth.GetValueAtLevel(Level));
 }

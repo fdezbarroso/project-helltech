@@ -7,6 +7,10 @@
 AHelltechCharacterBase::AHelltechCharacterBase(): AbilitySystemComponent(nullptr), AttributeSet(nullptr)
 {
 	PrimaryActorTick.bCanEverTick = false;
+
+	AbilitySystemComponent = CreateDefaultSubobject<UHelltechAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+
+	AttributeSet = CreateDefaultSubobject<UHelltechAttributeSet>(TEXT("AttributeSet"));
 }
 
 void AHelltechCharacterBase::ApplyDamageToTarget(AHelltechCharacterBase* Target, const float DamageAmount)

@@ -4,10 +4,13 @@
 #include "Characters/HelltechCharacterBase.h"
 #include "HelltechCharacter.generated.h"
 
+struct FInputActionValue;
 struct FOnAttributeChangeData;
+class UCameraComponent;
 class UHelltechDataAsset;
 class UInputAction;
 class UInputMappingContext;
+class USpringArmComponent;
 
 /**
  * Player Character class for the main character.
@@ -27,6 +30,12 @@ public:
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
 protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
+	USpringArmComponent* SpringArm;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
+	UCameraComponent* Camera;
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enhanced Input")
 	UHelltechDataAsset* HelltechDataAsset;
 
@@ -36,9 +45,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enhanced Input")
 	UInputAction* MoveInputAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enhanced Input")
+	UInputAction* LookInputAction;
+
 	FDelegateHandle MoveSpeedChangedDelegate;
 	FDelegateHandle AccelerationChangedDelegate;
 	FDelegateHandle HealthChangedDelegate;
+
+	void EnhancedInputMove(const FInputActionValue& InputValue);
+	void EnhancedInputLook(const FInputActionValue& InputValue);
 
 	virtual void MoveSpeedChanged(const FOnAttributeChangeData& Data);
 	virtual void AccelerationChanged(const FOnAttributeChangeData& Data);
