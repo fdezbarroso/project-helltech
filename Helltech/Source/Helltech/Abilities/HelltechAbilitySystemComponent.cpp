@@ -2,6 +2,20 @@
 #include "AbilitySystemGlobals.h"
 #include "GameplayCueManager.h"
 
+UHelltechAbilitySystemComponent::UHelltechAbilitySystemComponent(): CharacterAbilitiesGiven(false)
+{
+}
+
+bool UHelltechAbilitySystemComponent::GetCharacterAbilitiesGiven() const
+{
+	return CharacterAbilitiesGiven;
+}
+
+void UHelltechAbilitySystemComponent::SetCharacterAbilitiesGiven(const bool AbilitiesGiven)
+{
+	CharacterAbilitiesGiven = AbilitiesGiven;
+}
+
 void UHelltechAbilitySystemComponent::ExecuteGameplayCueLocal(const FGameplayTag GameplayCueTag,
                                                               const FGameplayCueParameters& GameplayCueParameters) const
 {

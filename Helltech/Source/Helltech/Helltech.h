@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 
 UENUM(BlueprintType)
-enum class ELilithAbilityID : uint8
+enum class EHelltechAbilityID : uint8
 {
 	// 0 None
 	None UMETA(DisplayName = "None")

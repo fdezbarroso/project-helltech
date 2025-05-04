@@ -8,7 +8,7 @@ public class Helltech : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
-		PublicDependencyModuleNames.AddRange(new string[]
+		PublicDependencyModuleNames.AddRange(new[]
 		{
 			"Core",
 			"CoreUObject",
@@ -17,7 +17,7 @@ public class Helltech : ModuleRules
 			"InputCore"
 		});
 
-		PrivateDependencyModuleNames.AddRange(new string[]
+		PrivateDependencyModuleNames.AddRange(new[]
 		{
 			"GameplayAbilities",
 			"GameplayTags",
