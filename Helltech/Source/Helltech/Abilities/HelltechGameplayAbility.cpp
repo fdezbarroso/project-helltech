@@ -2,7 +2,7 @@
 
 #include "Helltech.h"
 
-UHelltechGameplayAbility::UHelltechGameplayAbility(): AbilityID(ELilithAbilityID::None)
+UHelltechGameplayAbility::UHelltechGameplayAbility(): AbilityID(EHelltechAbilityID::None)
 {
 }
 

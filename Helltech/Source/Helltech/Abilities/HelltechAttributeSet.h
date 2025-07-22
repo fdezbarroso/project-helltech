@@ -24,7 +24,30 @@ class HELLTECH_API UHelltechAttributeSet : public UAttributeSet
 public:
 	virtual void PreAttributeChange(const FGameplayAttribute& Attribute, float& NewValue) override;
 
+	virtual void PostGameplayEffectExecute(const FGameplayEffectModCallbackData& Data) override;
+
 	UPROPERTY(BlueprintReadOnly, Category = "Movement")
-	FGameplayAttributeData MaxMoveSpeed;
-	HELLTECH_ATTRIBUTE_ACCESSORS(UHelltechAttributeSet, MaxMoveSpeed)
+	FGameplayAttributeData CharacterLevel;
+	HELLTECH_ATTRIBUTE_ACCESSORS(UHelltechAttributeSet, CharacterLevel)
+
+	UPROPERTY(BlueprintReadOnly, Category = "Movement")
+	FGameplayAttributeData MoveSpeed;
+	HELLTECH_ATTRIBUTE_ACCESSORS(UHelltechAttributeSet, MoveSpeed)
+
+	UPROPERTY(BlueprintReadOnly, Category = "Movement")
+	FGameplayAttributeData Acceleration;
+	HELLTECH_ATTRIBUTE_ACCESSORS(UHelltechAttributeSet, Acceleration)
+
+	UPROPERTY(BlueprintReadOnly, Category = "Health")
+	FGameplayAttributeData MaxHealth;
+	HELLTECH_ATTRIBUTE_ACCESSORS(UHelltechAttributeSet, MaxHealth)
+
+	UPROPERTY(BlueprintReadOnly, Category = "Health")
+	FGameplayAttributeData Health;
+	HELLTECH_ATTRIBUTE_ACCESSORS(UHelltechAttributeSet, Health)
+
+	// Transient attribute, used for calculations, not as the character's base damage.
+	UPROPERTY(BlueprintReadOnly, Category = "Damage")
+	FGameplayAttributeData Damage;
+	HELLTECH_ATTRIBUTE_ACCESSORS(UHelltechAttributeSet, Damage)
 };
