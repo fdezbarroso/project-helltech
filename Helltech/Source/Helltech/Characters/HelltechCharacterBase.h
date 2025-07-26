@@ -4,6 +4,7 @@
 #include "GameFramework/Character.h"
 #include "HelltechCharacterBase.generated.h"
 
+enum class ECharacterType : uint8;
 enum class EHelltechAbilityID : uint8;
 class UGameplayEffect;
 class UHelltechAbilitySystemComponent;
@@ -65,6 +66,8 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Abilities | Effects")
 	TSubclassOf<UGameplayEffect> DamageEffect;
+
+	ECharacterType CharacterType;
 
 	// Call in BeginPlay for non-player controlled characters, in PossessedBy for player character.
 	virtual void SetupAbilitySystemComponent(AActor* OwnerActor, AActor* AvatarActor);

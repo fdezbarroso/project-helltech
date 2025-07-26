@@ -1,10 +1,12 @@
 #include "HelltechCharacterBase.h"
 
+#include "Helltech.h"
 #include "Abilities/HelltechAbilitySystemComponent.h"
 #include "Abilities/HelltechAttributeSet.h"
 #include "Abilities/HelltechGameplayAbility.h"
 
-AHelltechCharacterBase::AHelltechCharacterBase(): AbilitySystemComponent(nullptr), AttributeSet(nullptr)
+AHelltechCharacterBase::AHelltechCharacterBase(): AbilitySystemComponent(nullptr), AttributeSet(nullptr),
+                                                  CharacterType(ECharacterType::None)
 {
 	PrimaryActorTick.bCanEverTick = false;
 

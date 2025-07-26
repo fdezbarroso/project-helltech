@@ -2,6 +2,7 @@
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Helltech.h"
 #include "Abilities/HelltechAbilitySystemComponent.h"
 #include "Abilities/HelltechAttributeSet.h"
 #include "Camera/CameraComponent.h"
@@ -11,6 +12,8 @@
 
 AHelltechCharacter::AHelltechCharacter()
 {
+	CharacterType = ECharacterType::Helltech;
+
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::Type::NoCollision);
 
 	SpringArm = CreateDefaultSubobject<USpringArmComponent>(TEXT("SpringArmComponent"));
