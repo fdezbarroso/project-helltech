@@ -33,7 +33,7 @@ public:
 	virtual UHelltechAttributeSet* GetAttributeSet() const;
 
 	UFUNCTION(BlueprintCallable, Category = "Character | Attributes")
-	virtual int GetAbilityLevel(EHelltechAbilityID AbilityID) const;
+	virtual int GetAbilityLevel(const EHelltechAbilityID AbilityID) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Character | Attributes")
 	int GetCharacterLevel() const;

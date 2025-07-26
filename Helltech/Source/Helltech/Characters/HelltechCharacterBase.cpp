@@ -43,10 +43,28 @@ UHelltechAttributeSet* AHelltechCharacterBase::GetAttributeSet() const
 	return AttributeSet;
 }
 
-int AHelltechCharacterBase::GetAbilityLevel(EHelltechAbilityID AbilityID) const
+int AHelltechCharacterBase::GetAbilityLevel(const EHelltechAbilityID AbilityID) const
 {
-	// TODO: Implement this
-	return 1;
+	if (!AbilitySystemComponent)
+	{
+		return -1;
+	}
+
+	const TArray<FGameplayAbilitySpec>& ActivatableAbilities = AbilitySystemComponent->GetActivatableAbilities();
+
+	for (const FGameplayAbilitySpec& Spec : ActivatableAbilities)
+	{
+		if (Spec.Ability)
+		{
+			const UHelltechGameplayAbility* HelltechAbility = Cast<UHelltechGameplayAbility>(Spec.Ability);
+			if (HelltechAbility && HelltechAbility->AbilityID == AbilityID)
+			{
+				return Spec.Level;
+			}
+		}
+	}
+
+	return -1;
 }
 
 int AHelltechCharacterBase::GetCharacterLevel() const
