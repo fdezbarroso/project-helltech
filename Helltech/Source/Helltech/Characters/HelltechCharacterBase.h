@@ -23,7 +23,7 @@ class HELLTECH_API AHelltechCharacterBase : public ACharacter
 	GENERATED_BODY()
 
 public:
-	AHelltechCharacterBase();
+	AHelltechCharacterBase(const FObjectInitializer& ObjectInitializer);
 
 	UFUNCTION(BlueprintCallable, Category = "Character | Damage")
 	virtual void ApplyDamageToTarget(AHelltechCharacterBase* Target, const float DamageAmount);

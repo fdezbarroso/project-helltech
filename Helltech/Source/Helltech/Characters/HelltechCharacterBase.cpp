@@ -4,7 +4,7 @@
 #include "Abilities/HelltechAttributeSet.h"
 #include "Abilities/HelltechGameplayAbility.h"
 
-AHelltechCharacterBase::AHelltechCharacterBase(): AbilitySystemComponent(nullptr), AttributeSet(nullptr)
+AHelltechCharacterBase::AHelltechCharacterBase(const FObjectInitializer& ObjectInitializer): AbilitySystemComponent(nullptr), AttributeSet(nullptr)
 {
 	PrimaryActorTick.bCanEverTick = false;
 

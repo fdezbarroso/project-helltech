@@ -23,7 +23,7 @@ class HELLTECH_API AHelltechCharacter : public AHelltechCharacterBase
 	GENERATED_BODY()
 
 public:
-	AHelltechCharacter();
+	AHelltechCharacter(const FObjectInitializer& ObjectInitializer);
 
 	virtual void PossessedBy(AController* NewController) override;
 

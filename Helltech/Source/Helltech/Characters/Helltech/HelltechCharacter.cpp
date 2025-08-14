@@ -8,8 +8,10 @@
 #include "DataAssets/Characters/HelltechDataAsset.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "Player/HelltechMovementComponent.h"
 
-AHelltechCharacter::AHelltechCharacter()
+AHelltechCharacter::AHelltechCharacter(const FObjectInitializer& ObjectInitializer): Super(
+	ObjectInitializer.SetDefaultSubobjectClass<UHelltechMovementComponent>(CharacterMovementComponentName))
 {
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::Type::NoCollision);
 
