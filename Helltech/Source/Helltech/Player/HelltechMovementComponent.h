@@ -14,4 +14,10 @@ class HELLTECH_API UHelltechMovementComponent : public UCharacterMovementCompone
 
 public:
 	UHelltechMovementComponent();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	UCurveFloat* AccelerationCurve;
+
+protected:
+	virtual void CalcVelocity(float DeltaTime, float Friction, bool bFluid, float BrakingDeceleration) override;
 };
