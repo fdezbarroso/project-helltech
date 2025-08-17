@@ -22,6 +22,10 @@ AHelltechCharacter::AHelltechCharacter(const FObjectInitializer& ObjectInitializ
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("CameraComponent"));
 	Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
 	Camera->bUsePawnControlRotation = false;
+
+	LastMoveInput = FVector2D::ZeroVector;
+
+	WantsToSprint = false;
 }
 
 void AHelltechCharacter::PossessedBy(AController* NewController)
@@ -77,6 +81,12 @@ void AHelltechCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(LookInputAction, ETriggerEvent::Triggered, this,
 		                                   &AHelltechCharacter::EnhancedInputLook);
 
+		EnhancedInputComponent->BindAction(SprintInputAction, ETriggerEvent::Started, this,
+		                                   &AHelltechCharacter::EnhancedInputStartSprint);
+
+		EnhancedInputComponent->BindAction(SprintInputAction, ETriggerEvent::Completed, this,
+		                                   &AHelltechCharacter::EnhancedInputStopSprint);
+
 		EnhancedInputComponent->BindAction(JumpInputAction, ETriggerEvent::Started, this,
 		                                   &AHelltechCharacter::EnhancedInputJump);
 
@@ -107,6 +117,13 @@ void AHelltechCharacter::EnhancedInputMove(const FInputActionValue& InputValue)
 
 	const FVector2D CurrentMoveVector = InputValue.Get<FVector2D>();
 
+	LastMoveInput = CurrentMoveVector;
+
+	if (CurrentMoveVector.Y <= 0.0f && WantsToSprint)
+	{
+		EnhancedInputStopSprint(InputValue);
+	}
+
 	const FRotator Rotator = Controller->GetControlRotation();
 	const FRotator YawRotation(0.0f, Rotator.Yaw, 0.0f);
 
@@ -132,6 +149,34 @@ void AHelltechCharacter::EnhancedInputLook(const FInputActionValue& InputValue)
 	AddControllerPitchInput(-CurrentLookVector.Y);
 }
 
+void AHelltechCharacter::EnhancedInputStartSprint(const FInputActionValue& InputValue)
+{
+	WantsToSprint = true;
+
+	TryStartSprint();
+}
+
+void AHelltechCharacter::EnhancedInputStopSprint(const FInputActionValue& InputValue)
+{
+	WantsToSprint = false;
+
+	if (CanSprint())
+	{
+		if (!AbilitySystemComponent || !SprintEffectHandle.IsValid())
+		{
+			return;
+		}
+
+		if (UHelltechMovementComponent* HelltechMovement = Cast<UHelltechMovementComponent>(GetCharacterMovement()))
+		{
+			HelltechMovement->SetIsSprinting(false);
+		}
+
+		AbilitySystemComponent->RemoveActiveGameplayEffect(SprintEffectHandle);
+		SprintEffectHandle.Invalidate();
+	}
+}
+
 void AHelltechCharacter::EnhancedInputJump(const FInputActionValue& InputValue)
 {
 	if (CanJump())
@@ -152,13 +197,49 @@ void AHelltechCharacter::EnhancedInputStopJump(const FInputActionValue& InputVal
 	StopJumping();
 }
 
+void AHelltechCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode)
+{
+	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
+
+	if (PrevMovementMode == MOVE_Falling && GetCharacterMovement()->MovementMode == MOVE_Walking)
+	{
+		if (!WantsToSprint)
+		{
+			if (UHelltechMovementComponent* HelltechMovement = Cast<UHelltechMovementComponent>(GetCharacterMovement()))
+			{
+				HelltechMovement->SetIsSprinting(false);
+			}
+
+			if (AbilitySystemComponent && SprintEffectHandle.IsValid())
+			{
+				AbilitySystemComponent->RemoveActiveGameplayEffect(SprintEffectHandle);
+				SprintEffectHandle.Invalidate();
+			}
+		}
+		else
+		{
+			TryStartSprint();
+		}
+	}
+}
+
 void AHelltechCharacter::MoveSpeedChanged(const FOnAttributeChangeData& Data)
 {
 	const float MaxMoveSpeed = Data.NewValue;
 
-	if (UCharacterMovementComponent* CharacterMovementComponent = GetCharacterMovement())
+	if (UHelltechMovementComponent* HelltechMovement = Cast<UHelltechMovementComponent>(GetCharacterMovement()))
 	{
-		CharacterMovementComponent->MaxWalkSpeed = MaxMoveSpeed;
+		HelltechMovement->MaxWalkSpeed = MaxMoveSpeed;
+
+		// We check the Gameplay Effect handle to know if we are "sprinting", not the input flag.
+		if (SprintEffectHandle.IsValid())
+		{
+			HelltechMovement->SetBaseSprintSpeed(MaxMoveSpeed);
+		}
+		else
+		{
+			HelltechMovement->SetBaseWalkSpeed(MaxMoveSpeed);
+		}
 	}
 }
 
@@ -179,5 +260,39 @@ void AHelltechCharacter::HealthChanged(const FOnAttributeChangeData& Data)
 	if (Health <= 0.0f)
 	{
 		Die();
+	}
+}
+
+bool AHelltechCharacter::CanSprint() const
+{
+	if (const UHelltechMovementComponent* HelltechMovement = Cast<UHelltechMovementComponent>(GetCharacterMovement()))
+	{
+		return HelltechMovement->IsMovingOnGround() || HelltechMovement->IsInCoyoteTime();
+	}
+	return false;
+}
+
+void AHelltechCharacter::TryStartSprint()
+{
+	if (CanSprint() && LastMoveInput.Y > 0.0f && !SprintEffectHandle.IsValid())
+	{
+		if (!AbilitySystemComponent || !SprintEffect)
+		{
+			return;
+		}
+
+		if (UHelltechMovementComponent* HelltechMovement = Cast<UHelltechMovementComponent>(GetCharacterMovement()))
+		{
+			HelltechMovement->SetIsSprinting(true);
+		}
+
+		const FGameplayEffectContextHandle ContextHandle = AbilitySystemComponent->MakeEffectContext();
+		const FGameplayEffectSpecHandle SpecHandle = AbilitySystemComponent->MakeOutgoingSpec(
+			SprintEffect, 1.0f, ContextHandle);
+
+		if (SpecHandle.IsValid())
+		{
+			SprintEffectHandle = AbilitySystemComponent->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+		}
 	}
 }

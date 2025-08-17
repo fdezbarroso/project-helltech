@@ -3,15 +3,37 @@
 #include "GameFramework/Character.h"
 
 UHelltechMovementComponent::UHelltechMovementComponent() : AccelerationCurve(nullptr), JumpCutoffFactor(0.0f),
-                                                           FallingGravityScale(0.0f), CoyoteTimeDuration(0.0f),
-                                                           JumpBufferDuration(0.0f), DefaultGravityScale(0.0f),
-                                                           IsJumping(false)
+                                                           FallingGravityScale(0.0f), BrakingDecelerationLanding(0.0f),
+                                                           CoyoteTimeDuration(0.0f), JumpBufferDuration(0.0f),
+                                                           BaseWalkSpeed(0.0f), BaseSprintSpeed(0.0f),
+                                                           DefaultGravityScale(0.0f), IsJumping(false),
+                                                           IsSprinting(false)
 {
+}
+
+void UHelltechMovementComponent::SetBaseWalkSpeed(float NewWalkSpeed)
+{
+	BaseWalkSpeed = NewWalkSpeed;
+}
+
+void UHelltechMovementComponent::SetBaseSprintSpeed(float NewSprintSpeed)
+{
+	BaseSprintSpeed = NewSprintSpeed;
+}
+
+void UHelltechMovementComponent::SetIsSprinting(bool NewIsSprinting)
+{
+	IsSprinting = NewIsSprinting;
 }
 
 void UHelltechMovementComponent::TryBufferJump()
 {
 	GetWorld()->GetTimerManager().SetTimer(JumpBufferTimerHandle, JumpBufferDuration, false);
+}
+
+bool UHelltechMovementComponent::IsInCoyoteTime() const
+{
+	return GetWorld()->GetTimerManager().IsTimerActive(CoyoteTimeTimerHandle);
 }
 
 void UHelltechMovementComponent::BeginPlay()
@@ -64,17 +86,42 @@ void UHelltechMovementComponent::CalcVelocity(float DeltaTime, float Friction, b
 		float FinalAcceleration = CurrentMaxAcceleration;
 		if (AccelerationCurve && CurrentMaxSpeed > 0.0f)
 		{
-			const float SpeedRatio = FMath::Clamp(Velocity.Size() / CurrentMaxSpeed, 0.0f, 1.0f);
+			float SpeedRatio = 0.0f;
+
+			if (IsSprinting)
+			{
+				if (BaseSprintSpeed > BaseWalkSpeed)
+				{
+					const float SpeedInRange = FMath::Clamp(VelocitySize, BaseWalkSpeed, BaseSprintSpeed);
+					const float RangeCompletion = (SpeedInRange - BaseWalkSpeed) / (BaseSprintSpeed - BaseWalkSpeed);
+					SpeedRatio = 1.0f + RangeCompletion;
+				}
+				else
+				{
+					SpeedRatio = 1.0f;
+				}
+			}
+			else
+			{
+				SpeedRatio = FMath::Clamp(Velocity.Size() / BaseWalkSpeed, 0.0f, 1.0f);
+			}
 
 			const float CurveMultiplier = AccelerationCurve->GetFloatValue(SpeedRatio);
-
 			FinalAcceleration *= CurveMultiplier;
 		}
 
 		Velocity += AccelerationDirection * FinalAcceleration * DeltaTime;
-	}
 
-	Velocity = Velocity.GetClampedToMaxSize(CurrentMaxSpeed);
+		const float CurrentVelocitySize = Velocity.Size();
+		if (CurrentVelocitySize > CurrentMaxSpeed)
+		{
+			const FVector VelocityDirection = Velocity.GetSafeNormal();
+
+			const float BrakeSpeed = FMath::Max(0.0f, BrakingDecelerationWalking * DeltaTime);
+
+			Velocity = VelocityDirection * FMath::Max(CurrentMaxSpeed, CurrentVelocitySize - BrakeSpeed);
+		}
+	}
 }
 
 void UHelltechMovementComponent::OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode)
@@ -104,7 +151,7 @@ void UHelltechMovementComponent::OnMovementModeChanged(EMovementMode PreviousMov
 
 bool UHelltechMovementComponent::CanAttemptJump() const
 {
-	const bool InCoyoteTime = GetWorld()->GetTimerManager().IsTimerActive(CoyoteTimeTimerHandle);
+	const bool InCoyoteTime = IsInCoyoteTime();
 
 	const bool CanJumpNormally = Super::CanAttemptJump();
 
@@ -113,7 +160,7 @@ bool UHelltechMovementComponent::CanAttemptJump() const
 
 bool UHelltechMovementComponent::IsFalling() const
 {
-	if (GetWorld()->GetTimerManager().IsTimerActive(CoyoteTimeTimerHandle))
+	if (IsInCoyoteTime())
 	{
 		return false;
 	}

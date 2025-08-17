@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "ActiveGameplayEffectHandle.h"
 #include "Characters/HelltechCharacterBase.h"
 #include "HelltechCharacter.generated.h"
 
@@ -46,10 +47,18 @@ protected:
 	UInputAction* MoveInputAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enhanced Input")
+	UInputAction* SprintInputAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enhanced Input")
 	UInputAction* LookInputAction;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enhanced Input")
 	UInputAction* JumpInputAction;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
+	TSubclassOf<UGameplayEffect> SprintEffect;
+
+	FActiveGameplayEffectHandle SprintEffectHandle;
 
 	FDelegateHandle MoveSpeedChangedDelegate;
 	FDelegateHandle AccelerationChangedDelegate;
@@ -59,10 +68,23 @@ protected:
 
 	void EnhancedInputMove(const FInputActionValue& InputValue);
 	void EnhancedInputLook(const FInputActionValue& InputValue);
+	void EnhancedInputStartSprint(const FInputActionValue& InputValue);
+	void EnhancedInputStopSprint(const FInputActionValue& InputValue);
 	void EnhancedInputJump(const FInputActionValue& InputValue);
 	void EnhancedInputStopJump(const FInputActionValue& InputValue);
+
+	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode = 0) override;
 
 	virtual void MoveSpeedChanged(const FOnAttributeChangeData& Data);
 	virtual void AccelerationChanged(const FOnAttributeChangeData& Data);
 	virtual void HealthChanged(const FOnAttributeChangeData& Data);
+
+	bool CanSprint() const;
+
+private:
+	FVector2D LastMoveInput;
+
+	bool WantsToSprint;
+
+	void TryStartSprint();
 };

@@ -24,7 +24,18 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement | Jump")
 	float FallingGravityScale;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Movement")
+	float BrakingDecelerationLanding;
+
+	void SetBaseWalkSpeed(float InWalkSpeed);
+
+	void SetBaseSprintSpeed(float InSprintSpeed);
+
+	void SetIsSprinting(bool NewIsSprinting);
+
 	void TryBufferJump();
+
+	bool IsInCoyoteTime() const;
 
 protected:
 	virtual void BeginPlay() override;
@@ -49,9 +60,15 @@ private:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement | Jump", meta = (AllowPrivateAccess = "true"))
 	float JumpBufferDuration;
 
+	float BaseWalkSpeed;
+
+	float BaseSprintSpeed;
+
 	float DefaultGravityScale;
 
 	bool IsJumping;
+
+	bool IsSprinting;
 
 	FTimerHandle CoyoteTimeTimerHandle;
 	FTimerHandle JumpBufferTimerHandle;
