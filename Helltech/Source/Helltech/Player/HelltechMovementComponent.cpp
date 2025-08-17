@@ -62,7 +62,7 @@ void UHelltechMovementComponent::CalcVelocity(float DeltaTime, float Friction, b
 	const float CurrentMaxAcceleration = GetMaxAcceleration();
 	const float CurrentMaxSpeed = GetMaxSpeed();
 
-	// No input, break.
+	// No input, brake.
 	if (Acceleration.IsZero())
 	{
 		if (Velocity.SizeSquared() < KINDA_SMALL_NUMBER)
@@ -80,6 +80,9 @@ void UHelltechMovementComponent::CalcVelocity(float DeltaTime, float Friction, b
 	{
 		const FVector AccelerationDirection = Acceleration.GetSafeNormal();
 		const float VelocitySize = Velocity.Size();
+
+		// Apply friction only to our sideways velocity.
+		// Lets us make sharp turns without losing all our forward speed.
 		Velocity = Velocity - (Velocity - AccelerationDirection * VelocitySize) *
 			FMath::Min(DeltaTime * Friction, 1.0f);
 
@@ -90,6 +93,8 @@ void UHelltechMovementComponent::CalcVelocity(float DeltaTime, float Friction, b
 
 			if (IsSprinting)
 			{
+				// For the curve, walk is [0-1] and sprint is (1-2].
+				// Lets us define a different 'feel' for sprinting in the same curve.
 				if (BaseSprintSpeed > BaseWalkSpeed)
 				{
 					const float SpeedInRange = FMath::Clamp(VelocitySize, BaseWalkSpeed, BaseSprintSpeed);
@@ -115,10 +120,9 @@ void UHelltechMovementComponent::CalcVelocity(float DeltaTime, float Friction, b
 		const float CurrentVelocitySize = Velocity.Size();
 		if (CurrentVelocitySize > CurrentMaxSpeed)
 		{
+			// If we've gone over our max speed (f.e. Sprint), gently brake back down.
 			const FVector VelocityDirection = Velocity.GetSafeNormal();
-
 			const float BrakeSpeed = FMath::Max(0.0f, BrakingDecelerationWalking * DeltaTime);
-
 			Velocity = VelocityDirection * FMath::Max(CurrentMaxSpeed, CurrentVelocitySize - BrakeSpeed);
 		}
 	}
@@ -128,6 +132,8 @@ void UHelltechMovementComponent::OnMovementModeChanged(EMovementMode PreviousMov
 {
 	Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
 
+	// If we just walked off a ledge (and didn't jump), start a timer that
+	// gives us a short window to jump anyway.
 	if (!IsJumping && PreviousMovementMode == MOVE_Walking && MovementMode == MOVE_Falling)
 	{
 		GetWorld()->GetTimerManager().SetTimer(CoyoteTimeTimerHandle, CoyoteTimeDuration, false);
@@ -135,9 +141,10 @@ void UHelltechMovementComponent::OnMovementModeChanged(EMovementMode PreviousMov
 
 	if (PreviousMovementMode == MOVE_Falling && MovementMode == MOVE_Walking)
 	{
-		// Reset needed due to it being changes in PhysFalling
+		// Landed, reset gravity back to normal.
 		GravityScale = DefaultGravityScale;
 
+		// Player wanted to jump right as we landed.
 		if (GetWorld()->GetTimerManager().IsTimerActive(JumpBufferTimerHandle))
 		{
 			GetWorld()->GetTimerManager().ClearTimer(JumpBufferTimerHandle);
@@ -151,11 +158,7 @@ void UHelltechMovementComponent::OnMovementModeChanged(EMovementMode PreviousMov
 
 bool UHelltechMovementComponent::CanAttemptJump() const
 {
-	const bool InCoyoteTime = IsInCoyoteTime();
-
-	const bool CanJumpNormally = Super::CanAttemptJump();
-
-	return CanJumpNormally || InCoyoteTime;
+	return Super::CanAttemptJump() || IsInCoyoteTime();
 }
 
 bool UHelltechMovementComponent::IsFalling() const
@@ -170,6 +173,8 @@ bool UHelltechMovementComponent::IsFalling() const
 
 void UHelltechMovementComponent::PhysFalling(float deltaTime, int32 Iterations)
 {
+	// On the way down from a jump, crank up gravity to make it feel snappier.
+	// On the way up, use normal gravity.
 	if (Velocity.Z < 0.0f)
 	{
 		GravityScale = FallingGravityScale;
@@ -184,6 +189,8 @@ void UHelltechMovementComponent::PhysFalling(float deltaTime, int32 Iterations)
 
 bool UHelltechMovementComponent::DoJump(bool bReplayingMoves)
 {
+	// Flag that we're in the middle of a jump. This stops OnMovementModeChanged
+	// from starting coyote time if we jump off a ledge.
 	IsJumping = true;
 
 	const bool DidJump = Super::DoJump(bReplayingMoves);

@@ -10,6 +10,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Player/HelltechMovementComponent.h"
 
+// We use the ObjectInitializer to replace the default UCharacterMovementComponent with our own.
 AHelltechCharacter::AHelltechCharacter(const FObjectInitializer& ObjectInitializer) : Super(
 	ObjectInitializer.SetDefaultSubobjectClass<UHelltechMovementComponent>(CharacterMovementComponentName))
 {
@@ -36,7 +37,7 @@ void AHelltechCharacter::PossessedBy(AController* NewController)
 
 	if (AbilitySystemComponent)
 	{
-		// Set listeners before initialization for attributes that need to set initial character values.
+		// Set listeners **before** initialization so they can react to the initial attribute values.
 		MoveSpeedChangedDelegate = AbilitySystemComponent->GetGameplayAttributeValueChangeDelegate(
 			UHelltechAttributeSet::GetMoveSpeedAttribute()).AddUObject(this, &AHelltechCharacter::MoveSpeedChanged);
 
@@ -99,6 +100,7 @@ void AHelltechCharacter::StopJumping()
 {
 	Super::StopJumping();
 
+	// If we're still moving up, cut our vertical velocity to get a shorter jump.
 	if (UHelltechMovementComponent* HelltechMovement = Cast<UHelltechMovementComponent>(GetCharacterMovement()))
 	{
 		if (HelltechMovement->Velocity.Z > 0.0f)
@@ -119,6 +121,7 @@ void AHelltechCharacter::EnhancedInputMove(const FInputActionValue& InputValue)
 
 	LastMoveInput = CurrentMoveVector;
 
+	// Stop sprinting if the player tries to move backwards.
 	if (CurrentMoveVector.Y <= 0.0f && WantsToSprint)
 	{
 		EnhancedInputStopSprint(InputValue);
@@ -144,15 +147,12 @@ void AHelltechCharacter::EnhancedInputLook(const FInputActionValue& InputValue)
 	const FVector2D CurrentLookVector = InputValue.Get<FVector2D>();
 
 	AddControllerYawInput(CurrentLookVector.X);
-
-	// Negate pitch because inverted Y-axis is for weird people :)
 	AddControllerPitchInput(-CurrentLookVector.Y);
 }
 
 void AHelltechCharacter::EnhancedInputStartSprint(const FInputActionValue& InputValue)
 {
 	WantsToSprint = true;
-
 	TryStartSprint();
 }
 
@@ -172,6 +172,7 @@ void AHelltechCharacter::EnhancedInputStopSprint(const FInputActionValue& InputV
 			HelltechMovement->SetIsSprinting(false);
 		}
 
+		// Stop sprinting by removing the gameplay effect.
 		AbilitySystemComponent->RemoveActiveGameplayEffect(SprintEffectHandle);
 		SprintEffectHandle.Invalidate();
 	}
@@ -179,6 +180,7 @@ void AHelltechCharacter::EnhancedInputStopSprint(const FInputActionValue& InputV
 
 void AHelltechCharacter::EnhancedInputJump(const FInputActionValue& InputValue)
 {
+	// If we can't jump now, buffer it.
 	if (CanJump())
 	{
 		Jump();
@@ -201,6 +203,7 @@ void AHelltechCharacter::OnMovementModeChanged(EMovementMode PrevMovementMode, u
 {
 	Super::OnMovementModeChanged(PrevMovementMode, PreviousCustomMode);
 
+	// When we land, check if we should still be sprinting.
 	if (PrevMovementMode == MOVE_Falling && GetCharacterMovement()->MovementMode == MOVE_Walking)
 	{
 		if (!WantsToSprint)
@@ -274,6 +277,7 @@ bool AHelltechCharacter::CanSprint() const
 
 void AHelltechCharacter::TryStartSprint()
 {
+	// Gatekeeper for starting a sprint. Check all conditions before applying the effect.
 	if (CanSprint() && LastMoveInput.Y > 0.0f && !SprintEffectHandle.IsValid())
 	{
 		if (!AbilitySystemComponent || !SprintEffect)

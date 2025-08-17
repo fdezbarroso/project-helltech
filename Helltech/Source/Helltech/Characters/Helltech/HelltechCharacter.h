@@ -37,6 +37,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Camera")
 	UCameraComponent* Camera;
 
+	// Holds the data to initialize our character's default attributes.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enhanced Input")
 	UHelltechDataAsset* HelltechDataAsset;
 
@@ -55,15 +56,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enhanced Input")
 	UInputAction* JumpInputAction;
 
+	// The Gameplay Effect to apply when we sprint.
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Abilities")
 	TSubclassOf<UGameplayEffect> SprintEffect;
 
+	// We use this handle to track if the sprint effect is active and to remove it.
 	FActiveGameplayEffectHandle SprintEffectHandle;
 
 	FDelegateHandle MoveSpeedChangedDelegate;
 	FDelegateHandle AccelerationChangedDelegate;
 	FDelegateHandle HealthChangedDelegate;
 
+	// Override to implement variable jump height.
 	virtual void StopJumping() override;
 
 	void EnhancedInputMove(const FInputActionValue& InputValue);
@@ -73,18 +77,24 @@ protected:
 	void EnhancedInputJump(const FInputActionValue& InputValue);
 	void EnhancedInputStopJump(const FInputActionValue& InputValue);
 
+	// Used to re-evaluate sprint state on landing.
 	virtual void OnMovementModeChanged(EMovementMode PrevMovementMode, uint8 PreviousCustomMode = 0) override;
 
+	// Callbacks for when our attributes change.
 	virtual void MoveSpeedChanged(const FOnAttributeChangeData& Data);
 	virtual void AccelerationChanged(const FOnAttributeChangeData& Data);
 	virtual void HealthChanged(const FOnAttributeChangeData& Data);
 
+	// The conditions required to be able to sprint.
 	bool CanSprint() const;
 
 private:
+	// The last known movement input. Used to check if we're trying to sprint backwards.
 	FVector2D LastMoveInput;
 
+	// Tracks the player's *intent* to sprint from input, which might not be the same as actually sprinting.
 	bool WantsToSprint;
 
+	// Checks conditions and applies the sprint effect if possible.
 	void TryStartSprint();
 };
