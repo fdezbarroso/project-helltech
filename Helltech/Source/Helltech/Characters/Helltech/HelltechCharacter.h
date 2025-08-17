@@ -48,12 +48,19 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enhanced Input")
 	UInputAction* LookInputAction;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Enhanced Input")
+	UInputAction* JumpInputAction;
+
 	FDelegateHandle MoveSpeedChangedDelegate;
 	FDelegateHandle AccelerationChangedDelegate;
 	FDelegateHandle HealthChangedDelegate;
 
+	virtual void StopJumping() override;
+
 	void EnhancedInputMove(const FInputActionValue& InputValue);
 	void EnhancedInputLook(const FInputActionValue& InputValue);
+	void EnhancedInputJump(const FInputActionValue& InputValue);
+	void EnhancedInputStopJump(const FInputActionValue& InputValue);
 
 	virtual void MoveSpeedChanged(const FOnAttributeChangeData& Data);
 	virtual void AccelerationChanged(const FOnAttributeChangeData& Data);

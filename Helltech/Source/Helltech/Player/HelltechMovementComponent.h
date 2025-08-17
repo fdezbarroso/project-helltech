@@ -15,9 +15,44 @@ class HELLTECH_API UHelltechMovementComponent : public UCharacterMovementCompone
 public:
 	UHelltechMovementComponent();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement | Plane")
 	UCurveFloat* AccelerationCurve;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement | Jump")
+	float JumpCutoffFactor;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement | Jump")
+	float FallingGravityScale;
+
+	void TryBufferJump();
+
 protected:
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
 	virtual void CalcVelocity(float DeltaTime, float Friction, bool bFluid, float BrakingDeceleration) override;
+
+	virtual void OnMovementModeChanged(EMovementMode PreviousMovementMode, uint8 PreviousCustomMode) override;
+
+	virtual bool CanAttemptJump() const override;
+
+	virtual bool IsFalling() const override;
+
+	virtual void PhysFalling(float deltaTime, int32 Iterations) override;
+
+	virtual bool DoJump(bool bReplayingMoves) override;
+
+private:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement | Jump", meta = (AllowPrivateAccess = "true"))
+	float CoyoteTimeDuration;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement | Jump", meta = (AllowPrivateAccess = "true"))
+	float JumpBufferDuration;
+
+	float DefaultGravityScale;
+
+	bool IsJumping;
+
+	FTimerHandle CoyoteTimeTimerHandle;
+	FTimerHandle JumpBufferTimerHandle;
 };

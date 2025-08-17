@@ -10,7 +10,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Player/HelltechMovementComponent.h"
 
-AHelltechCharacter::AHelltechCharacter(const FObjectInitializer& ObjectInitializer): Super(
+AHelltechCharacter::AHelltechCharacter(const FObjectInitializer& ObjectInitializer) : Super(
 	ObjectInitializer.SetDefaultSubobjectClass<UHelltechMovementComponent>(CharacterMovementComponentName))
 {
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::Type::NoCollision);
@@ -76,6 +76,25 @@ void AHelltechCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 
 		EnhancedInputComponent->BindAction(LookInputAction, ETriggerEvent::Triggered, this,
 		                                   &AHelltechCharacter::EnhancedInputLook);
+
+		EnhancedInputComponent->BindAction(JumpInputAction, ETriggerEvent::Started, this,
+		                                   &AHelltechCharacter::EnhancedInputJump);
+
+		EnhancedInputComponent->BindAction(JumpInputAction, ETriggerEvent::Completed, this,
+		                                   &AHelltechCharacter::EnhancedInputStopJump);
+	}
+}
+
+void AHelltechCharacter::StopJumping()
+{
+	Super::StopJumping();
+
+	if (UHelltechMovementComponent* HelltechMovement = Cast<UHelltechMovementComponent>(GetCharacterMovement()))
+	{
+		if (HelltechMovement->Velocity.Z > 0.0f)
+		{
+			HelltechMovement->Velocity.Z *= HelltechMovement->JumpCutoffFactor;
+		}
 	}
 }
 
@@ -111,6 +130,26 @@ void AHelltechCharacter::EnhancedInputLook(const FInputActionValue& InputValue)
 
 	// Negate pitch because inverted Y-axis is for weird people :)
 	AddControllerPitchInput(-CurrentLookVector.Y);
+}
+
+void AHelltechCharacter::EnhancedInputJump(const FInputActionValue& InputValue)
+{
+	if (CanJump())
+	{
+		Jump();
+	}
+	else
+	{
+		if (UHelltechMovementComponent* HelltechMovement = Cast<UHelltechMovementComponent>(GetCharacterMovement()))
+		{
+			HelltechMovement->TryBufferJump();
+		}
+	}
+}
+
+void AHelltechCharacter::EnhancedInputStopJump(const FInputActionValue& InputValue)
+{
+	StopJumping();
 }
 
 void AHelltechCharacter::MoveSpeedChanged(const FOnAttributeChangeData& Data)
