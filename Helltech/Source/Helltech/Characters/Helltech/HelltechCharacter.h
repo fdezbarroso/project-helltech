@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "ActiveGameplayEffectHandle.h"
 #include "Characters/HelltechCharacterBase.h"
+#include "UI/DashProgressBarWidget.h"
 #include "HelltechCharacter.generated.h"
 
 struct FInputActionValue;
@@ -25,6 +26,10 @@ class HELLTECH_API AHelltechCharacter : public AHelltechCharacterBase
 
 public:
 	AHelltechCharacter(const FObjectInitializer& ObjectInitializer);
+
+	virtual void BeginPlay() override;
+
+	virtual void Tick(float DeltaSeconds) override;
 
 	virtual void PossessedBy(AController* NewController) override;
 
@@ -67,6 +72,52 @@ protected:
 	FDelegateHandle AccelerationChangedDelegate;
 	FDelegateHandle HealthChangedDelegate;
 
+#pragma region Dash
+	//Dash variables
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash")
+	float DashDistance = 800.f;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash")
+	float DashTime = 0.2f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash")
+	float DashCooldown = 3.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash")
+	bool DashWithMovement = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash")
+	float FinalInertiaMultiplicator = 0.3f;
+	
+	bool bIsDashing = false;
+	bool bCanDash = true;
+
+	bool bTestGroundTouchedAfterDash = false;
+	bool bCooldownStarted = false;
+
+	FVector DashDirection;
+	FVector DashCurrentVelocity;
+	float DashElapsedTime = 0.f;
+	float DashCooldownElapsedTime = 0.f;
+
+	float OriginalBrakingFrictionFactor;
+	float OriginalAirControl;
+
+	UPROPERTY()
+	UDashProgressBarWidget* DashProgressBar;
+	
+	UPROPERTY(VisibleAnywhere)
+	UCameraComponent* PlayerCamera;
+
+	//Dash functions
+	UFUNCTION(BlueprintCallable, Category="Dash")
+	void Dash();
+
+	void ResetDash();
+
+#pragma endregion
+	bool IsWidgetClassInViewport(UWorld* World, TSubclassOf<UUserWidget> WidgetClass);
+
 	// Override to implement variable jump height.
 	virtual void StopJumping() override;
 
@@ -97,4 +148,20 @@ private:
 
 	// Checks conditions and applies the sprint effect if possible.
 	void TryStartSprint();
+
+#pragma region DEBUG_ZONE
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash|DEBUG")
+	bool DashDebug = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash|DEBUG")
+	FColor DashDebugColor = FColor::Red;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash|DEBUG")
+	FColor InertiaDebugColor = FColor::Magenta;
+	bool DebugPostDashUntilTouchGround = false;
+	float ElapsedTimePostDashUntilTouchGround = 0.f;
+	float CooldownDebugUntilTouchGround = 0.2f;
+	FVector DebugLastPlayerPositionUntilTouchGround = FVector::ZeroVector;
+
+#pragma endregion
 };
