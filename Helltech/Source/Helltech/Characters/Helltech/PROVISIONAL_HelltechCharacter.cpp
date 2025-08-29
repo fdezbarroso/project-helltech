@@ -123,26 +123,44 @@ void APROVISIONAL_HelltechCharacter::Dash()
 {
 	if (!bCanDash || bIsDashing) return;
 
+	//Si tiene DashWithMovement y se está moviendo
 	if (CODE_DashWithMovement && (GetCharacterMovement()->Velocity.X != 0 || GetCharacterMovement()->Velocity.Y != 0))
 	{
 		DashDirection = GetCharacterMovement()->Velocity.GetSafeNormal();
+		//Si está mirando hacia abajo
 		if (GetCharacterMovement()->IsMovingOnGround() && PlayerCamera->GetComponentRotation().Pitch < 0.f)
 		{
+			//Hacia delante (Z)
 			DashDirection.Z = 0;
 		}
 		else
 		{
-			DashDirection.Z = PlayerCamera->GetForwardVector().Z;
+			//Si se está moviendo hacia delante
+			if (IsMovingForwardWithCamera(DodgeAngleTolerance))
+			{
+				//Hacia donde esté mirando (Z)
+				DashDirection.Z = PlayerCamera->GetForwardVector().Z;
+			}
+			//Si se está moviendo hacia otra dirección (esquivar)
+			else
+			{
+				DashDirection.Z = 0;
+			}
 		}
 	}
+	//Si está en el suelo y mirando hacia abajo y no se está moviendo
 	else if (GetCharacterMovement()->IsMovingOnGround() && PlayerCamera->GetComponentRotation().Pitch < 0.f)
 	{
+		//Dash hacia delante
 		DashDirection = GetActorForwardVector().GetSafeNormal();
 	}
+	//Si no está en el suelo
 	else
 	{
+		//Si tiene camara te mueves hacia donde apunte la camara, sino hacia delante
 		DashDirection = PlayerCamera ? PlayerCamera->GetForwardVector().GetSafeNormal() : GetActorForwardVector().GetSafeNormal();
 	}
+	
 	if (CODE_DashDebug)
 	{
 		DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() + DashDirection*CODE_DashDistance, CODE_DashDebugColor, false, 20);
@@ -157,7 +175,7 @@ void APROVISIONAL_HelltechCharacter::Dash()
 	OriginalAirControl = GetCharacterMovement()->AirControl;
 	
 	GetCharacterMovement()->BrakingFrictionFactor = 0;
-	GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	GetCharacterMovement()->SetMovementMode(MOVE_Falling);
 	GetCharacterMovement()->Velocity = FVector::ZeroVector;
 	GetCharacterMovement()->AirControl = 1.0f;
 
@@ -196,4 +214,32 @@ bool APROVISIONAL_HelltechCharacter::IsWidgetClassInViewport(UWorld* World, TSub
 	}
 	
 	return false;
+}
+
+bool APROVISIONAL_HelltechCharacter::IsMovingForwardWithCamera(float toleranceDegrees) const
+{
+	// Velocidad actual
+	FVector Velocity = GetVelocity();
+	Velocity.Z = 0.0f;
+
+	if (Velocity.IsNearlyZero())
+	{
+		return false; // no se está moviendo
+	}
+
+	// Dirección del movimiento (normalizada)
+	FVector MoveDir = Velocity.GetSafeNormal();
+
+	// Forward de la cámara
+	FRotator ControlRot = PlayerCamera->GetComponentRotation();
+	FRotator YawRot(0.0f, ControlRot.Yaw, 0.0f); // solo yaw
+	FVector CameraForward = FRotationMatrix(YawRot).GetUnitAxis(EAxis::X);
+
+	// Producto punto para ver el ángulo
+	float Dot = FVector::DotProduct(MoveDir, CameraForward);
+
+	// Convertimos tolerancia en coseno para comparar
+	float CosTolerance = FMath::Cos(FMath::DegreesToRadians(toleranceDegrees));
+
+	return Dot > CosTolerance;
 }

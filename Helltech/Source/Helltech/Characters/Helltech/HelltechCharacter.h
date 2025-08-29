@@ -89,6 +89,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash")
 	float FinalInertiaMultiplicator = 0.3f;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash")
+	float DodgeAngleTolerance = 15.f;
+	
 	bool bIsDashing = false;
 	bool bCanDash = true;
 
@@ -117,6 +120,7 @@ protected:
 
 #pragma endregion
 	bool IsWidgetClassInViewport(UWorld* World, TSubclassOf<UUserWidget> WidgetClass);
+	bool IsMovingForwardWithCamera(float toleranceDegrees) const;
 
 	// Override to implement variable jump height.
 	virtual void StopJumping() override;

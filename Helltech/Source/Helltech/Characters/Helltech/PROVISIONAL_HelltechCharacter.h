@@ -8,10 +8,20 @@
 #include "UI/DashProgressBarWidget.h"
 #include "PROVISIONAL_HelltechCharacter.generated.h"
 
+UENUM()
+enum class EWallRunSide : uint8
+{
+	None,
+	Left,
+	Right
+};
+
 UCLASS()
 class HELLTECH_API APROVISIONAL_HelltechCharacter : public ACharacter
 {
 	GENERATED_BODY()
+
+#pragma region InheritedFunctions
 
 public:
 	// Sets default values for this character's properties
@@ -27,7 +37,9 @@ public:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+#pragma endregion InheritedFunctions
 
+#pragma region Dash
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash")
 	float CODE_DashDistance = 800.f;
@@ -43,6 +55,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash")
 	float CODE_FinalInertiaMultiplicator = 0.3f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash")
+	float DodgeAngleTolerance = 15.f;
 	
 	bool bIsDashing = false;
 	bool bCanDash = true;
@@ -68,7 +83,24 @@ protected:
 	void Dash();
 
 	void ResetDash();
+#pragma endregion Dash
+
+#pragma region WallRun
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
+	float WallRunSpeed = 900.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
+	float WallRunGravityScale = 0.3f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
+	float WallRunCameraTilt = 15.f;
+#pragma endregion WallRun
+
+#pragma region Utilities
+protected:
 	bool IsWidgetClassInViewport(UWorld* World, TSubclassOf<UUserWidget> WidgetClass);
+	bool IsMovingForwardWithCamera(float toleranceDegrees) const;
+#pragma endregion Utilities
 
 #pragma region DEBUG_ZONE
 
