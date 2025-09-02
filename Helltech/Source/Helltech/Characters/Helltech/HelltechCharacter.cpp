@@ -192,17 +192,71 @@ void AHelltechCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(JumpInputAction, ETriggerEvent::Completed, this,
 		                                   &AHelltechCharacter::EnhancedInputStopJump);
 	}
+
+	if (UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		if (MoveInputAction)
+		{
+			EnhancedInput->BindAction(MoveInputAction, ETriggerEvent::Triggered, this, &AHelltechCharacter::DetectMovement);
+			EnhancedInput->BindAction(MoveInputAction, ETriggerEvent::Completed, this, &AHelltechCharacter::DetectMovement);
+		}
+	}
+}
+
+void AHelltechCharacter::DetectMovement(const FInputActionValue& Value)
+{
+	FVector2D result = Value.Get<FVector2D>();
+	if (FMath::IsNearlyEqual(result.Y, 1.f, ForwardMovementCameraTolerance / 100.f))
+	{
+		MovementKeys.bUp = true;
+	}
+	else
+	{
+		MovementKeys.bUp = false;
+	}
+	if (FMath::IsNearlyEqual(result.Y, -1.f, ForwardMovementCameraTolerance / 100.f))
+	{
+		MovementKeys.bDown = true;
+	}
+	else
+	{
+		MovementKeys.bDown = false;
+	}
+	if (FMath::IsNearlyEqual(result.X, 1.f, ForwardMovementCameraTolerance / 100.f))
+	{
+		MovementKeys.bRight = true;
+	}
+	else
+	{
+		MovementKeys.bRight = false;
+	}
+	if (FMath::IsNearlyEqual(result.X, -1.f, ForwardMovementCameraTolerance / 100.f))
+	{
+		MovementKeys.bLeft = true;
+	}
+	else
+	{
+		MovementKeys.bLeft = false;
+	}
 }
 
 void AHelltechCharacter::Dash()
 {
 	if (!bCanDash || bIsDashing) return;
 
-	//Si tiene DashWithMovement y se está moviendo
+	//Si tiene DashWithMovement y está en movimiento
 	if (DashWithMovement && (GetCharacterMovement()->Velocity.X != 0 || GetCharacterMovement()->Velocity.Y != 0))
 	{
-		DashDirection = GetCharacterMovement()->Velocity.GetSafeNormal();
-		//Si está mirando hacia abajo
+		if (MoveInputAction)
+		{
+			DashDirection = GetActorForwardVector() * (MovementKeys.bUp ? 1 : 0 + MovementKeys.bDown ? -1 : 0) +
+				GetActorRightVector() * (MovementKeys.bRight ? 1.f : 0.f + MovementKeys.bLeft ? -1.f : 0.f);
+		}
+		else
+		{
+			DashDirection = GetCharacterMovement()->Velocity.GetSafeNormal();
+		}
+		//Si está mirando hacia abajo y está en el suelo
 		if (GetCharacterMovement()->IsMovingOnGround() && PlayerCamera->GetComponentRotation().Pitch < 0.f)
 		{
 			//Hacia delante (Z)
@@ -211,7 +265,7 @@ void AHelltechCharacter::Dash()
 		else
 		{
 			//Si se está moviendo hacia delante
-			if (IsMovingForwardWithCamera(DodgeAngleTolerance))
+			if (!MovementKeys.bDown && !MovementKeys.bRight && !MovementKeys.bLeft)
 			{
 				//Hacia donde esté mirando (Z)
 				DashDirection.Z = PlayerCamera->GetForwardVector().Z;
@@ -224,7 +278,7 @@ void AHelltechCharacter::Dash()
 		}
 	}
 	//Si está en el suelo y mirando hacia abajo y no se está moviendo
-	else if (GetCharacterMovement()->IsMovingOnGround() && PlayerCamera->GetComponentRotation().Pitch < 0.f)
+	else if (GetCharacterMovement()->IsMovingOnGround() && PlayerCamera->GetComponentRotation().Pitch < 0.f && GetCharacterMovement()->Velocity.IsNearlyZero())
 	{
 		//Dash hacia delante
 		DashDirection = GetActorForwardVector().GetSafeNormal();
@@ -290,35 +344,6 @@ bool AHelltechCharacter::IsWidgetClassInViewport(UWorld* World, TSubclassOf<UUse
 	
 	return false;
 }
-
-bool AHelltechCharacter::IsMovingForwardWithCamera(float toleranceDegrees) const
-{
-	// Velocidad actual
-	FVector Velocity = GetVelocity();
-	Velocity.Z = 0.0f;
-
-	if (Velocity.IsNearlyZero())
-	{
-		return false; // no se está moviendo
-	}
-
-	// Dirección del movimiento (normalizada)
-	FVector MoveDir = Velocity.GetSafeNormal();
-
-	// Forward de la cámara
-	FRotator ControlRot = PlayerCamera->GetComponentRotation();
-	FRotator YawRot(0.0f, ControlRot.Yaw, 0.0f); // solo yaw
-	FVector CameraForward = FRotationMatrix(YawRot).GetUnitAxis(EAxis::X);
-
-	// Producto punto para ver el ángulo
-	float Dot = FVector::DotProduct(MoveDir, CameraForward);
-
-	// Convertimos tolerancia en coseno para comparar
-	float CosTolerance = FMath::Cos(FMath::DegreesToRadians(toleranceDegrees));
-
-	return Dot > CosTolerance;
-}
-
 
 void AHelltechCharacter::StopJumping()
 {

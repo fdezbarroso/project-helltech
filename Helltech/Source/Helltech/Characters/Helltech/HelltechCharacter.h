@@ -14,6 +14,21 @@ class UInputAction;
 class UInputMappingContext;
 class USpringArmComponent;
 
+USTRUCT()
+struct FMovementKeys2D
+{
+	GENERATED_BODY()
+	UPROPERTY()
+	bool bRight = false;
+	UPROPERTY()
+	bool bLeft = false;
+	UPROPERTY()
+	bool bUp = false;
+	UPROPERTY()
+	bool bDown = false;
+};
+
+
 /**
  * Player Character class for the main character.
  * Implements input through the Enhanced Input System. Handles Gameplay Ability System initialization during possession.
@@ -92,6 +107,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash")
 	float DodgeAngleTolerance = 15.f;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash", meta=(UIMin=0, UIMax=100, Units="Percent"))
+	float ForwardMovementCameraTolerance = 20.f;
+	
 	bool bIsDashing = false;
 	bool bCanDash = true;
 
@@ -111,6 +129,10 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere)
 	UCameraComponent* PlayerCamera;
+	
+	UPROPERTY(VisibleAnywhere)
+	FMovementKeys2D MovementKeys;
+	
 
 	//Dash functions
 	UFUNCTION(BlueprintCallable, Category="Dash")
@@ -120,7 +142,7 @@ protected:
 
 #pragma endregion
 	bool IsWidgetClassInViewport(UWorld* World, TSubclassOf<UUserWidget> WidgetClass);
-	bool IsMovingForwardWithCamera(float toleranceDegrees) const;
+	void DetectMovement(const FInputActionValue& Value);
 
 	// Override to implement variable jump height.
 	virtual void StopJumping() override;
