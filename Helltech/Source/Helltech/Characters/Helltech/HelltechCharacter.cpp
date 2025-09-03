@@ -4,11 +4,13 @@
 #include "EnhancedInputSubsystems.h"
 #include "Abilities/HelltechAbilitySystemComponent.h"
 #include "Abilities/HelltechAttributeSet.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Camera/CameraComponent.h"
 #include "DataAssets/Characters/HelltechDataAsset.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Player/HelltechMovementComponent.h"
+#include "UI/DashProgressBarWidget.h"
 
 // We use the ObjectInitializer to replace the default UCharacterMovementComponent with our own.
 AHelltechCharacter::AHelltechCharacter(const FObjectInitializer& ObjectInitializer) : Super(
@@ -27,6 +29,102 @@ AHelltechCharacter::AHelltechCharacter(const FObjectInitializer& ObjectInitializ
 	LastMoveInput = FVector2D::ZeroVector;
 
 	WantsToSprint = false;
+}
+
+void AHelltechCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	PlayerCamera = GetComponentByClass<UCameraComponent>();
+	IsWidgetClassInViewport(GetWorld(), UDashProgressBarWidget::StaticClass());
+}
+
+void AHelltechCharacter::Tick(float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	if (bIsDashing)
+	{
+		DashElapsedTime += DeltaSeconds;
+		float Alpha = DashElapsedTime / DashTime;
+
+		if (Alpha >= 1.f)
+		{
+			bIsDashing = false;
+
+			GetCharacterMovement()->Velocity = DashCurrentVelocity * FinalInertiaMultiplicator;
+			
+			GetCharacterMovement()->BrakingFrictionFactor = OriginalBrakingFrictionFactor;
+			bTestGroundTouchedAfterDash = true;
+			// Si está en el aire, mantener inercia en caida
+			if (!GetCharacterMovement()->IsMovingOnGround())
+			{
+				GetCharacterMovement()->SetMovementMode(MOVE_Falling);
+			}
+			else
+			{
+				GetCharacterMovement()->SetMovementMode(MOVE_Walking);
+			}
+			if (DashDebug)
+			{
+				DebugPostDashUntilTouchGround = true;
+				DebugLastPlayerPositionUntilTouchGround = GetActorLocation();
+			}
+		}
+		else
+		{
+			FVector Move = DashDirection * (DashDistance / DashTime) * DeltaSeconds;
+			AddActorWorldOffset(Move, true);
+		}
+	}
+
+	if (bTestGroundTouchedAfterDash && GetCharacterMovement()->IsMovingOnGround())
+	{
+		bTestGroundTouchedAfterDash = false;
+		GetCharacterMovement()->AirControl = OriginalAirControl;
+	}
+
+	// DashProgressBar
+	if (bCooldownStarted)
+	{
+		DashCooldownElapsedTime += DeltaSeconds;
+		float Alpha = DashCooldownElapsedTime / DashCooldown;
+		if (Alpha >= 1.f)
+		{
+			bCooldownStarted = false;
+			DashCooldownElapsedTime = 0.f;
+			if (DashProgressBar)
+			{
+				DashProgressBar->SetDashPercentCooldown(0);
+			}
+		}
+		else
+		{
+			if (DashProgressBar)
+			{
+				DashProgressBar->SetDashPercentCooldown(1 - Alpha);
+			}
+		}
+	}
+
+#pragma region DEBUG_ZONE
+	/* ---------------------- DEBUG ZONE ---------------------- */
+	if (DebugPostDashUntilTouchGround && !GetCharacterMovement()->IsMovingOnGround())
+	{
+		ElapsedTimePostDashUntilTouchGround += DeltaSeconds;
+		if (ElapsedTimePostDashUntilTouchGround > CooldownDebugUntilTouchGround)
+		{
+			ElapsedTimePostDashUntilTouchGround = 0;
+			DrawDebugLine(GetWorld(), DebugLastPlayerPositionUntilTouchGround, GetActorLocation(), InertiaDebugColor, false, 20);
+			DebugLastPlayerPositionUntilTouchGround = GetActorLocation();
+		}
+	}
+	else if (DebugPostDashUntilTouchGround)
+	{
+		ElapsedTimePostDashUntilTouchGround = 0;
+		DebugPostDashUntilTouchGround = false;
+		DrawDebugLine(GetWorld(), DebugLastPlayerPositionUntilTouchGround, GetActorLocation(), InertiaDebugColor, false, 20);
+	}
+#pragma endregion DEBUG_ZONE
 }
 
 void AHelltechCharacter::PossessedBy(AController* NewController)
@@ -94,6 +192,157 @@ void AHelltechCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 		EnhancedInputComponent->BindAction(JumpInputAction, ETriggerEvent::Completed, this,
 		                                   &AHelltechCharacter::EnhancedInputStopJump);
 	}
+
+	if (UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		if (MoveInputAction)
+		{
+			EnhancedInput->BindAction(MoveInputAction, ETriggerEvent::Triggered, this, &AHelltechCharacter::DetectMovement);
+			EnhancedInput->BindAction(MoveInputAction, ETriggerEvent::Completed, this, &AHelltechCharacter::DetectMovement);
+		}
+	}
+}
+
+void AHelltechCharacter::DetectMovement(const FInputActionValue& Value)
+{
+	FVector2D result = Value.Get<FVector2D>();
+	if (FMath::IsNearlyEqual(result.Y, 1.f, ForwardMovementCameraTolerance / 100.f))
+	{
+		MovementKeys.bUp = true;
+	}
+	else
+	{
+		MovementKeys.bUp = false;
+	}
+	if (FMath::IsNearlyEqual(result.Y, -1.f, ForwardMovementCameraTolerance / 100.f))
+	{
+		MovementKeys.bDown = true;
+	}
+	else
+	{
+		MovementKeys.bDown = false;
+	}
+	if (FMath::IsNearlyEqual(result.X, 1.f, ForwardMovementCameraTolerance / 100.f))
+	{
+		MovementKeys.bRight = true;
+	}
+	else
+	{
+		MovementKeys.bRight = false;
+	}
+	if (FMath::IsNearlyEqual(result.X, -1.f, ForwardMovementCameraTolerance / 100.f))
+	{
+		MovementKeys.bLeft = true;
+	}
+	else
+	{
+		MovementKeys.bLeft = false;
+	}
+}
+
+void AHelltechCharacter::Dash()
+{
+	if (!bCanDash || bIsDashing) return;
+
+	//Si tiene DashWithMovement y está en movimiento
+	if (DashWithMovement && (GetCharacterMovement()->Velocity.X != 0 || GetCharacterMovement()->Velocity.Y != 0))
+	{
+		if (MoveInputAction)
+		{
+			DashDirection = GetActorForwardVector() * (MovementKeys.bUp ? 1 : 0 + MovementKeys.bDown ? -1 : 0) +
+				GetActorRightVector() * (MovementKeys.bRight ? 1.f : 0.f + MovementKeys.bLeft ? -1.f : 0.f);
+		}
+		else
+		{
+			DashDirection = GetCharacterMovement()->Velocity.GetSafeNormal();
+		}
+		//Si está mirando hacia abajo y está en el suelo
+		if (GetCharacterMovement()->IsMovingOnGround() && PlayerCamera->GetComponentRotation().Pitch < 0.f)
+		{
+			//Hacia delante (Z)
+			DashDirection.Z = 0;
+		}
+		else
+		{
+			//Si se está moviendo hacia delante
+			if (!MovementKeys.bDown && !MovementKeys.bRight && !MovementKeys.bLeft)
+			{
+				//Hacia donde esté mirando (Z)
+				DashDirection.Z = PlayerCamera->GetForwardVector().Z;
+			}
+			//Si se está moviendo hacia otra dirección (esquivar)
+			else
+			{
+				DashDirection.Z = 0;
+			}
+		}
+	}
+	//Si está en el suelo y mirando hacia abajo y no se está moviendo
+	else if (GetCharacterMovement()->IsMovingOnGround() && PlayerCamera->GetComponentRotation().Pitch < 0.f && GetCharacterMovement()->Velocity.IsNearlyZero())
+	{
+		//Dash hacia delante
+		DashDirection = GetActorForwardVector().GetSafeNormal();
+	}
+	//Si no está en el suelo
+	else
+	{
+		//Si tiene camara te mueves hacia donde apunte la camara, sino hacia delante
+		DashDirection = PlayerCamera ? PlayerCamera->GetForwardVector().GetSafeNormal() : GetActorForwardVector().GetSafeNormal();
+	}
+	
+	if (DashDebug)
+	{
+		DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() + DashDirection*DashDistance, DashDebugColor, false, 20);
+	}
+
+	bIsDashing = true;
+	bCanDash = false;
+	bCooldownStarted = true;
+	DashElapsedTime = 0.f;
+
+	OriginalBrakingFrictionFactor = GetCharacterMovement()->BrakingFrictionFactor;
+	OriginalAirControl = GetCharacterMovement()->AirControl;
+	
+	GetCharacterMovement()->BrakingFrictionFactor = 0;
+	GetCharacterMovement()->SetMovementMode(MOVE_Falling);
+	GetCharacterMovement()->Velocity = FVector::ZeroVector;
+	GetCharacterMovement()->AirControl = 1.0f;
+
+	DashCurrentVelocity = DashDirection * (DashDistance / DashTime);
+
+	// Cooldown
+	FTimerHandle TimerHandle;
+	GetWorldTimerManager().SetTimer(
+		TimerHandle,
+		this,
+		&AHelltechCharacter::ResetDash,
+		DashCooldown,
+		false
+	);
+}
+
+void AHelltechCharacter::ResetDash()
+{
+	bCanDash = true;
+}
+
+bool AHelltechCharacter::IsWidgetClassInViewport(UWorld* World, TSubclassOf<UUserWidget> WidgetClass)
+{
+	if (!World || !*WidgetClass)
+	{
+		return false;
+	}
+
+	TArray<UUserWidget*> FoundWidgets;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(World, FoundWidgets, WidgetClass, false);
+
+	if (FoundWidgets.Num() > 0)
+	{
+		DashProgressBar = Cast<UDashProgressBarWidget>(FoundWidgets[0]);
+		return true;
+	}
+	
+	return false;
 }
 
 void AHelltechCharacter::StopJumping()
