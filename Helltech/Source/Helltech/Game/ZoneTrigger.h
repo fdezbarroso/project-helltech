@@ -23,7 +23,7 @@ public:
 	bool bStartHordes;
 
 	// Global event for when a zone is triggered.
-	UPROPERTY(EditAnywhere, Category = "Zone")
+	UPROPERTY(BlueprintAssignable)
 	FOnZoneActivated OnZoneActivated;
 	
 protected:
