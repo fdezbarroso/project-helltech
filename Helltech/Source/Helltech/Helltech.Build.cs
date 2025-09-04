@@ -23,7 +23,9 @@ public class Helltech : ModuleRules
 			"GameplayTags",
 			"GameplayTasks",
 			"Niagara",
-			"NiagaraCore"
+			"NiagaraCore", 
+			"AIModule",
+			"NavigationSystem"
 		});
 
 		PublicIncludePaths.AddRange(new[]
