@@ -49,8 +49,9 @@ void AHordManager::OnZoneActivated(FName ZoneTag, bool bStartHordes)
 	UE_LOG(LogTemp, Display, TEXT("Zone %s is activated on HordManager"), *ZoneTag.ToString());
 	SetActiveZone(ZoneTag);
 	ActivateStaticEnemis(ZoneTag);
-	if (bStartHordes)
+	if (bStartHordes && !bHordeRunning && WavesByZone.Contains(ZoneTag))
 	{
+		bHordeRunning = true;
 		BeginZone();
 	}
 }
@@ -100,18 +101,30 @@ void AHordManager::BeginZone()
 
 void AHordManager::StartNextWave()
 {
-	if (!WavesByZone.Contains(CurrentZone)) return;
-
+	if (!WavesByZone.Contains(CurrentZone)) {
+		bHordeRunning = false;
+		return;
+	}
 	const TArray<FHordeWave>& Waves = WavesByZone[CurrentZone].Waves;
-	CurrentWave++;	
+	CurrentWave++;
+
+	UE_LOG(LogTemp, Display, TEXT("Starting Wave %d"), CurrentWave);
 
 	if (!Waves.IsValidIndex(CurrentWave))
 	{
+		bHordeRunning = false;
+		GetWorldTimerManager().ClearTimer(SpawnTimer);
+		GetWorldTimerManager().ClearTimer(WaveTimer);
+		GetWorldTimerManager().ClearTimer(WaitForAllDeadTimer);
+		UE_LOG(LogTemp, Display, TEXT("Zone %s: all waves completed."), *CurrentZone.ToString());
 		return;
 	}
 
 	ActiveWave = Waves[CurrentWave];
 	RemainingToSpawn = ActiveWave.Count;
+	
+	UE_LOG(LogTemp, Display, TEXT("Zone %s -> Wave %d (Count=%d, Interval=%.2f)"),
+	   *CurrentZone.ToString(), CurrentWave, ActiveWave.Count, ActiveWave.SpawnInterval);
 
 	GetWorldTimerManager().SetTimer(WaveTimer, [this]()
 	{
@@ -121,8 +134,9 @@ void AHordManager::StartNextWave()
 
 void AHordManager::OnEnemyDestroyed(AActor* DestroyedActor)
 {
-	EnemiesAlive--;
-
+	FMath::Max(0, --EnemiesAlive);
+	UE_LOG(LogTemp, Display, TEXT("Enemy destroyed on horde manager. Alive=%d"), EnemiesAlive);
+	
 	if (EnemiesAlive <= 0)
 	{
 		StartNextWave();
@@ -136,11 +150,12 @@ void AHordManager::SpawnOne()
 		GetWorldTimerManager().ClearTimer(SpawnTimer);
 
 		if (bWaitAllDead) {
-			FTimerHandle WaitHandle;
-			GetWorldTimerManager().SetTimer(WaitHandle, [this]()
+			GetWorldTimerManager().ClearTimer(WaitForAllDeadTimer);
+			GetWorldTimerManager().SetTimer(WaitForAllDeadTimer, [this]()
 			{
 				if (EnemiesAlive <= 0)
 				{
+					GetWorldTimerManager().ClearTimer(WaitForAllDeadTimer);
 					StartNextWave();
 				}
 			}, 0.5f, true);
@@ -154,6 +169,7 @@ void AHordManager::SpawnOne()
 	ASpawnPoint* SpawnP = PickRandomSpawn();
 	if (!SpawnP ||!ActiveWave.EnemyClass) {
 		RemainingToSpawn = 0;
+		GetWorldTimerManager().ClearTimer(SpawnTimer);
 		return;
 	}
 
@@ -164,8 +180,12 @@ void AHordManager::SpawnOne()
 	if (SpawnedEnemy)
 	{
 		SpawnedEnemy->IncreaseDifficulty(ActiveWave.HealthMultiplier, ActiveWave.DamageMultiplier);
-		EnemiesAlive++;
+		EnemiesAlive = FMath::Max(0, ++EnemiesAlive);
 		SpawnedEnemy->OnDestroyed.AddDynamic(this, &AHordManager::OnEnemyDestroyed);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Error, TEXT("SpawnActor failed for class %s"), *ActiveWave.EnemyClass->GetName());
 	}
 	RemainingToSpawn--;
 }

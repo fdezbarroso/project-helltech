@@ -78,8 +78,13 @@ private:
 	int32 CurrentWave = -1;
 	FTimerHandle WaveTimer;
 	FTimerHandle SpawnTimer;
+	FTimerHandle WaitForAllDeadTimer;
 	int32 RemainingToSpawn = 0;
 	FHordeWave ActiveWave;
+
+	// For avoiding starting horde more than once when triggering a zone
+	UPROPERTY(EditAnywhere, Category="Hordes")
+	bool bHordeRunning = false;
 
 	void RefreshSpawnPoints();
 	void SetActiveZone(const FName& ZoneTag);
