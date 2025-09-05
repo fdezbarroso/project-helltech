@@ -18,16 +18,16 @@ void AHordManager::BeginPlay()
 
 	RefreshSpawnPoints();
 	
-	TArray<AActor*> Triggers;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(),AZoneTrigger::StaticClass(), Triggers);
-
-	for (AActor* A : Triggers)
-	{
-		if (AZoneTrigger* Trig = Cast<AZoneTrigger>(A))
-		{
-			Trig->OnZoneActivated.AddDynamic(this, &AHordManager::OnZoneActivated);
-		}
-	}
+	// TArray<AActor*> Triggers;
+	// UGameplayStatics::GetAllActorsOfClass(GetWorld(),AZoneTrigger::StaticClass(), Triggers);
+	//
+	// for (AActor* A : Triggers)
+	// {
+	// 	if (AZoneTrigger* Trig = Cast<AZoneTrigger>(A))
+	// 	{
+	// 		Trig->OnZoneActivated.AddDynamic(this, &AHordManager::OnZoneActivated);
+	// 	}
+	// }
 }
 
 void AHordManager::RefreshSpawnPoints()
@@ -71,7 +71,7 @@ void AHordManager::SetActiveZone(const FName& ZoneTag)
 void AHordManager::ActivateStaticEnemis(const FName& ZoneTag)
 {
 	TArray<AActor*> Actors;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(),AZoneTrigger::StaticClass(),Actors);
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(),AEnemyBase::StaticClass(),Actors);
 	for (AActor* A : Actors)
 	{
 		if (!A) continue;

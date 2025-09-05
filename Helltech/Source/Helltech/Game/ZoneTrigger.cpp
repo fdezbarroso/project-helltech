@@ -1,5 +1,8 @@
 #include "Game/ZoneTrigger.h"
+
+#include "HordManager.h"
 #include "GameFramework/Character.h"
+#include "EngineUtils.h"
 
 AZoneTrigger::AZoneTrigger()
 {
@@ -9,6 +12,11 @@ AZoneTrigger::AZoneTrigger()
 void AZoneTrigger::BeginPlay()
 {
 	Super::BeginPlay();
+
+	for (TActorIterator<AHordManager> It(GetWorld()); It; ++It)
+	{
+		OnZoneActivated.AddDynamic(*It, &AHordManager::OnZoneActivated);
+	}
 }
 
 void AZoneTrigger::HandleOverlap(AActor* OverlappedActor, AActor* OtherActor)
