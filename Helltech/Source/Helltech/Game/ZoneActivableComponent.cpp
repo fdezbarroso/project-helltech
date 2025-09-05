@@ -9,7 +9,6 @@ void UZoneActivableComponent::BeginPlay()
 
 	if (bStartDisabled)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("This enemy starts disabled"));
 		SetEnabled(false);
 	}
 }

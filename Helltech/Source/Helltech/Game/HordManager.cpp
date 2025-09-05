@@ -59,11 +59,20 @@ void AHordManager::SetActiveZone(const FName& ZoneTag)
 {
 	CurrentZone = ZoneTag;
 	ActiveSpawnPoints.Reset();
-	for (ASpawnPoint* sp : ActiveSpawnPoints)
+
+	TArray<AActor*> Found;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(),ASpawnPoint::StaticClass(),Found);
+	
+	for (AActor* A : Found)
 	{
-		if (sp && sp->SpawnZoneTag == ZoneTag)
+		UE_LOG(LogTemp, Display, TEXT("Iterating over Spawn Points")); 
+		if (ASpawnPoint* sp = Cast<ASpawnPoint>(A))
 		{
-			ActiveSpawnPoints.Add(sp);
+			if (sp->SpawnZoneTag == CurrentZone)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Adding Spawn Point %s"), *sp->SpawnZoneTag.ToString());
+				ActiveSpawnPoints.Add(sp);
+			}
 		}
 	}
 }
