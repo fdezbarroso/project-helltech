@@ -14,7 +14,9 @@ public class Helltech : ModuleRules
 			"CoreUObject",
 			"Engine",
 			"EnhancedInput",
-			"InputCore"
+			"InputCore",
+			"AIModule",
+			"NavigationSystem"
 		});
 
 		PrivateDependencyModuleNames.AddRange(new[]
