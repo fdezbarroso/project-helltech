@@ -2,6 +2,7 @@
 #include "GameFramework/Actor.h"
 #include "GameFramework/Character.h"
 #include "AIController.h"
+#include "Characters/Helltech/EnemyBase.h"
 
 void UZoneActivableComponent::BeginPlay()
 {
@@ -51,5 +52,10 @@ void UZoneActivableComponent::ActivateForZone(const FName& ActiveZone)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Enabling enemy!"));
 		SetEnabled(true);
+
+		if (AEnemyBase* Enemy = Cast<AEnemyBase>(GetOwner()))
+		{
+			Enemy->OnZoneActivated();
+		}
 	}
 }
