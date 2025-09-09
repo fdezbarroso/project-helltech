@@ -1,8 +1,10 @@
 #include "Characters/Helltech/PROVISIONAL_HelltechCharacter.h"
 
+#include "EnhancedInputComponent.h"
+#include "HelltechCharacter.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
-#include "Components/PanelWidget.h"
+#include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
@@ -117,32 +119,103 @@ void APROVISIONAL_HelltechCharacter::SetupPlayerInputComponent(UInputComponent* 
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	if (UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	{
+		if (MovementInputAction)
+		{
+			EnhancedInput->BindAction(MovementInputAction, ETriggerEvent::Triggered, this, &APROVISIONAL_HelltechCharacter::DetectMovement);
+			EnhancedInput->BindAction(MovementInputAction, ETriggerEvent::Completed, this, &APROVISIONAL_HelltechCharacter::DetectMovement);
+		}
+	}
+}
+
+void APROVISIONAL_HelltechCharacter::DetectMovement(const FInputActionValue& Value)
+{
+	FVector2D result = Value.Get<FVector2D>();
+	if (FMath::IsNearlyEqual(result.Y, 1.f, ForwardMovementCameraTolerance / 100.f))
+	{
+		MovementKeys.bUp = true;
+	}
+	else
+	{
+		MovementKeys.bUp = false;
+	}
+	if (FMath::IsNearlyEqual(result.Y, -1.f, ForwardMovementCameraTolerance / 100.f))
+	{
+		MovementKeys.bDown = true;
+	}
+	else
+	{
+		MovementKeys.bDown = false;
+	}
+	if (FMath::IsNearlyEqual(result.X, 1.f, ForwardMovementCameraTolerance / 100.f))
+	{
+		MovementKeys.bRight = true;
+	}
+	else
+	{
+		MovementKeys.bRight = false;
+	}
+	if (FMath::IsNearlyEqual(result.X, -1.f, ForwardMovementCameraTolerance / 100.f))
+	{
+		MovementKeys.bLeft = true;
+	}
+	else
+	{
+		MovementKeys.bLeft = false;
+	}
 }
 
 void APROVISIONAL_HelltechCharacter::Dash()
 {
 	if (!bCanDash || bIsDashing) return;
 
+	//Si tiene DashWithMovement y está en movimiento
 	if (CODE_DashWithMovement && (GetCharacterMovement()->Velocity.X != 0 || GetCharacterMovement()->Velocity.Y != 0))
 	{
-		DashDirection = GetCharacterMovement()->Velocity.GetSafeNormal();
+		if (MovementInputAction)
+		{
+			DashDirection = GetActorForwardVector() * (MovementKeys.bUp ? 1 : 0 + MovementKeys.bDown ? -1 : 0) +
+				GetActorRightVector() * (MovementKeys.bRight ? 1.f : 0.f + MovementKeys.bLeft ? -1.f : 0.f);
+		}
+		else
+		{
+			DashDirection = GetCharacterMovement()->Velocity.GetSafeNormal();
+		}
+		//Si está mirando hacia abajo y está en el suelo
 		if (GetCharacterMovement()->IsMovingOnGround() && PlayerCamera->GetComponentRotation().Pitch < 0.f)
 		{
+			//Hacia delante (Z)
 			DashDirection.Z = 0;
 		}
 		else
 		{
-			DashDirection.Z = PlayerCamera->GetForwardVector().Z;
+			//Si se está moviendo hacia delante
+			if (!MovementKeys.bDown && !MovementKeys.bRight && !MovementKeys.bLeft)
+			{
+				//Hacia donde esté mirando (Z)
+				DashDirection.Z = PlayerCamera->GetForwardVector().Z;
+			}
+			//Si se está moviendo hacia otra dirección (esquivar)
+			else
+			{
+				DashDirection.Z = 0;
+			}
 		}
 	}
-	else if (GetCharacterMovement()->IsMovingOnGround() && PlayerCamera->GetComponentRotation().Pitch < 0.f)
+	//Si está en el suelo y mirando hacia abajo y no se está moviendo
+	else if (GetCharacterMovement()->IsMovingOnGround() && PlayerCamera->GetComponentRotation().Pitch < 0.f && GetCharacterMovement()->Velocity.IsNearlyZero())
 	{
+		//Dash hacia delante
 		DashDirection = GetActorForwardVector().GetSafeNormal();
 	}
+	//Si no está en el suelo
 	else
 	{
+		//Si tiene camara te mueves hacia donde apunte la camara, sino hacia delante
 		DashDirection = PlayerCamera ? PlayerCamera->GetForwardVector().GetSafeNormal() : GetActorForwardVector().GetSafeNormal();
 	}
+	
 	if (CODE_DashDebug)
 	{
 		DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() + DashDirection*CODE_DashDistance, CODE_DashDebugColor, false, 20);
@@ -157,7 +230,7 @@ void APROVISIONAL_HelltechCharacter::Dash()
 	OriginalAirControl = GetCharacterMovement()->AirControl;
 	
 	GetCharacterMovement()->BrakingFrictionFactor = 0;
-	GetCharacterMovement()->SetMovementMode(MOVE_Flying);
+	GetCharacterMovement()->SetMovementMode(MOVE_Falling);
 	GetCharacterMovement()->Velocity = FVector::ZeroVector;
 	GetCharacterMovement()->AirControl = 1.0f;
 
