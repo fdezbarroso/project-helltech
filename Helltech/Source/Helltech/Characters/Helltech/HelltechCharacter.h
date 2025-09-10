@@ -26,6 +26,13 @@ struct FMovementKeys2D
 	bool bUp = false;
 	UPROPERTY()
 	bool bDown = false;
+	
+	bool IsAnyInputPressed() const
+	{
+		if (bRight || bLeft || bUp || bDown)
+			return true;
+		return false;
+	}
 };
 
 

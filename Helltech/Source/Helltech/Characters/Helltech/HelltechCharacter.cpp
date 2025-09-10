@@ -247,10 +247,14 @@ void AHelltechCharacter::Dash()
 	//Si tiene DashWithMovement y está en movimiento
 	if (DashWithMovement && (GetCharacterMovement()->Velocity.X != 0 || GetCharacterMovement()->Velocity.Y != 0))
 	{
-		if (MoveInputAction)
+		if (MoveInputAction && MovementKeys.IsAnyInputPressed())
 		{
 			DashDirection = GetActorForwardVector() * (MovementKeys.bUp ? 1 : 0 + MovementKeys.bDown ? -1 : 0) +
 				GetActorRightVector() * (MovementKeys.bRight ? 1.f : 0.f + MovementKeys.bLeft ? -1.f : 0.f);
+		}
+		else if (MoveInputAction && !MovementKeys.IsAnyInputPressed())
+		{
+			DashDirection = PlayerCamera ? PlayerCamera->GetForwardVector().GetSafeNormal() : GetActorForwardVector().GetSafeNormal();
 		}
 		else
 		{
