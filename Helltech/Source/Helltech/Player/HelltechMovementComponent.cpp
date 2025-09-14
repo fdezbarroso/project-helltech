@@ -1,14 +1,24 @@
 #include "Player/HelltechMovementComponent.h"
-
 #include "GameFramework/Character.h"
+#include "Camera/CameraComponent.h"
+#include "Blueprint/WidgetBlueprintLibrary.h"
 
-UHelltechMovementComponent::UHelltechMovementComponent() : AccelerationCurve(nullptr), JumpCutoffFactor(0.0f),
-                                                           FallingGravityScale(0.0f), BrakingDecelerationLanding(0.0f),
-                                                           CoyoteTimeDuration(0.0f), JumpBufferDuration(0.0f),
-                                                           BaseWalkSpeed(0.0f), BaseSprintSpeed(0.0f),
-                                                           DefaultGravityScale(0.0f), IsJumping(false),
-                                                           IsSprinting(false)
+UHelltechMovementComponent::UHelltechMovementComponent(): AccelerationCurve(nullptr), OriginalBrakingFrictionFactor(0.0f),
+                                                          OriginalAirControl(0.0f)
 {
+	JumpCutoffFactor = 0.5f;
+	FallingGravityScale = 2.0f;
+	BrakingDecelerationLanding = 1000.0f;
+	CoyoteTimeDuration = 0.15f;
+	JumpBufferDuration = 0.15f;
+	BaseWalkSpeed = 0.0f;
+	BaseSprintSpeed = 0.0f;
+	DefaultGravityScale = 1.0f;
+	
+	bIsJumping = false;
+	bIsSprinting = false;
+
+	DashProgressBar = nullptr;
 }
 
 void UHelltechMovementComponent::SetBaseWalkSpeed(float NewWalkSpeed)
@@ -23,7 +33,7 @@ void UHelltechMovementComponent::SetBaseSprintSpeed(float NewSprintSpeed)
 
 void UHelltechMovementComponent::SetIsSprinting(bool NewIsSprinting)
 {
-	IsSprinting = NewIsSprinting;
+	bIsSprinting = NewIsSprinting;
 }
 
 void UHelltechMovementComponent::TryBufferJump()
@@ -39,20 +49,109 @@ bool UHelltechMovementComponent::IsInCoyoteTime() const
 void UHelltechMovementComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
 	DefaultGravityScale = GravityScale;
+	FindDashProgressBar();
 }
 
 void UHelltechMovementComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	GetWorld()->GetTimerManager().ClearTimer(CoyoteTimeTimerHandle);
-	GetWorld()->GetTimerManager().ClearTimer(JumpBufferTimerHandle);
-
+	GetWorld()->GetTimerManager().ClearAllTimersForObject(this);
 	Super::EndPlay(EndPlayReason);
+}
+
+void UHelltechMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	if (bIsDashing)
+	{
+		DashElapsedTime += DeltaTime;
+		float Alpha = FMath::Clamp(DashElapsedTime / DashTime, 0.0f, 1.0f);
+
+		if (Alpha >= 1.0f)
+		{
+			bIsDashing = false;
+			Velocity = DashCurrentVelocity * FinalInertiaMultiplier;
+			
+			BrakingFrictionFactor = OriginalBrakingFrictionFactor;
+			bTestGroundTouchedAfterDash = true;
+
+			SetMovementMode(IsMovingOnGround() ? MOVE_Walking : MOVE_Falling);
+
+			if (bDashDebug)
+			{
+				bDebugPostDashUntilTouchGround = true;
+				DebugLastPlayerPositionUntilTouchGround = GetActorLocation();
+			}
+		}
+		else
+		{
+			FVector Move = DashDirection * (DashDistance / DashTime) * DeltaTime;
+			if (CharacterOwner)
+			{
+				FHitResult Hit;
+				CharacterOwner->AddActorWorldOffset(Move, true, &Hit);
+			}
+		}
+	}
+
+	if (bTestGroundTouchedAfterDash && IsMovingOnGround())
+	{
+		bTestGroundTouchedAfterDash = false;
+		AirControl = OriginalAirControl;
+	}
+
+	if (bCooldownStarted)
+	{
+		DashCooldownElapsedTime += DeltaTime;
+		float Alpha = FMath::Clamp(DashCooldownElapsedTime / DashCooldown, 0.0f, 1.0f);
+
+		if (Alpha >= 1.0f)
+		{
+			bCooldownStarted = false;
+			DashCooldownElapsedTime = 0.0f;
+			if (DashProgressBar)
+			{
+				DashProgressBar->SetDashPercentCooldown(0.0f);
+			}
+		}
+		else
+		{
+			if (DashProgressBar)
+			{
+				DashProgressBar->SetDashPercentCooldown(1.0f - Alpha);
+			}
+		}
+	}
+	
+	if (bDebugPostDashUntilTouchGround)
+	{
+		if (!IsMovingOnGround())
+		{
+			ElapsedTimePostDashUntilTouchGround += DeltaTime;
+			if (ElapsedTimePostDashUntilTouchGround > CooldownDebugUntilTouchGround)
+			{
+				ElapsedTimePostDashUntilTouchGround = 0.0f;
+				DrawDebugLine(GetWorld(), DebugLastPlayerPositionUntilTouchGround, GetActorLocation(), InertiaDebugColor, false, 20);
+				DebugLastPlayerPositionUntilTouchGround = GetActorLocation();
+			}
+		}
+		else
+		{
+			ElapsedTimePostDashUntilTouchGround = 0.0f;
+			bDebugPostDashUntilTouchGround = false;
+			DrawDebugLine(GetWorld(), DebugLastPlayerPositionUntilTouchGround, GetActorLocation(), InertiaDebugColor, false, 20);
+		}
+	}
 }
 
 void UHelltechMovementComponent::CalcVelocity(float DeltaTime, float Friction, bool bFluid, float BrakingDeceleration)
 {
+	if (bIsDashing)
+	{
+		return;
+	}
+
 	if (!HasValidData() || DeltaTime < MIN_TICK_TIME)
 	{
 		return;
@@ -62,7 +161,6 @@ void UHelltechMovementComponent::CalcVelocity(float DeltaTime, float Friction, b
 	const float CurrentMaxAcceleration = GetMaxAcceleration();
 	const float CurrentMaxSpeed = GetMaxSpeed();
 
-	// No input, brake.
 	if (Acceleration.IsZero())
 	{
 		if (Velocity.SizeSquared() < KINDA_SMALL_NUMBER)
@@ -75,14 +173,11 @@ void UHelltechMovementComponent::CalcVelocity(float DeltaTime, float Friction, b
 			ApplyVelocityBraking(DeltaTime, ActualBrakingFriction, BrakingDeceleration);
 		}
 	}
-	// Input, accelerate.
 	else
 	{
 		const FVector AccelerationDirection = Acceleration.GetSafeNormal();
 		const float VelocitySize = Velocity.Size();
 
-		// Apply friction only to our sideways velocity.
-		// Lets us make sharp turns without losing all our forward speed.
 		Velocity = Velocity - (Velocity - AccelerationDirection * VelocitySize) *
 			FMath::Min(DeltaTime * Friction, 1.0f);
 
@@ -91,10 +186,8 @@ void UHelltechMovementComponent::CalcVelocity(float DeltaTime, float Friction, b
 		{
 			float SpeedRatio = 0.0f;
 
-			if (IsSprinting)
+			if (bIsSprinting)
 			{
-				// For the curve, walk is [0-1] and sprint is (1-2].
-				// Lets us define a different 'feel' for sprinting in the same curve.
 				if (BaseSprintSpeed > BaseWalkSpeed)
 				{
 					const float SpeedInRange = FMath::Clamp(VelocitySize, BaseWalkSpeed, BaseSprintSpeed);
@@ -120,7 +213,6 @@ void UHelltechMovementComponent::CalcVelocity(float DeltaTime, float Friction, b
 		const float CurrentVelocitySize = Velocity.Size();
 		if (CurrentVelocitySize > CurrentMaxSpeed)
 		{
-			// If we've gone over our max speed (f.e. Sprint), gently brake back down.
 			const FVector VelocityDirection = Velocity.GetSafeNormal();
 			const float BrakeSpeed = FMath::Max(0.0f, BrakingDecelerationWalking * DeltaTime);
 			Velocity = VelocityDirection * FMath::Max(CurrentMaxSpeed, CurrentVelocitySize - BrakeSpeed);
@@ -132,19 +224,15 @@ void UHelltechMovementComponent::OnMovementModeChanged(EMovementMode PreviousMov
 {
 	Super::OnMovementModeChanged(PreviousMovementMode, PreviousCustomMode);
 
-	// If we just walked off a ledge (and didn't jump), start a timer that
-	// gives us a short window to jump anyway.
-	if (!IsJumping && PreviousMovementMode == MOVE_Walking && MovementMode == MOVE_Falling)
+	if (!bIsJumping && PreviousMovementMode == MOVE_Walking && MovementMode == MOVE_Falling)
 	{
 		GetWorld()->GetTimerManager().SetTimer(CoyoteTimeTimerHandle, CoyoteTimeDuration, false);
 	}
 
 	if (PreviousMovementMode == MOVE_Falling && MovementMode == MOVE_Walking)
 	{
-		// Landed, reset gravity back to normal.
 		GravityScale = DefaultGravityScale;
 
-		// Player wanted to jump right as we landed.
 		if (GetWorld()->GetTimerManager().IsTimerActive(JumpBufferTimerHandle))
 		{
 			GetWorld()->GetTimerManager().ClearTimer(JumpBufferTimerHandle);
@@ -173,8 +261,6 @@ bool UHelltechMovementComponent::IsFalling() const
 
 void UHelltechMovementComponent::PhysFalling(float deltaTime, int32 Iterations)
 {
-	// On the way down from a jump, crank up gravity to make it feel snappier.
-	// On the way up, use normal gravity.
 	if (Velocity.Z < 0.0f)
 	{
 		GravityScale = FallingGravityScale;
@@ -189,10 +275,7 @@ void UHelltechMovementComponent::PhysFalling(float deltaTime, int32 Iterations)
 
 bool UHelltechMovementComponent::DoJump(bool bReplayingMoves)
 {
-	// Flag that we're in the middle of a jump. This stops OnMovementModeChanged
-	// from starting coyote time if we jump off a ledge.
-	IsJumping = true;
-
+	bIsJumping = true;
 	const bool DidJump = Super::DoJump(bReplayingMoves);
 
 	if (DidJump)
@@ -200,7 +283,82 @@ bool UHelltechMovementComponent::DoJump(bool bReplayingMoves)
 		GetWorld()->GetTimerManager().ClearTimer(CoyoteTimeTimerHandle);
 	}
 
-	IsJumping = false;
-
+	bIsJumping = false;
 	return DidJump;
+}
+
+void UHelltechMovementComponent::PerformDash()
+{
+	if (!bCanDash || bIsDashing || !CharacterOwner)
+	{
+		return;
+	}
+
+	UCameraComponent* PlayerCamera = CharacterOwner->FindComponentByClass<UCameraComponent>();
+	if (!PlayerCamera)
+	{
+		return;
+	}
+
+	const FVector InputVector = GetLastInputVector();
+
+	if (bDashUsesMovementInput && !InputVector.IsNearlyZero())
+	{
+		DashDirection = InputVector.GetSafeNormal();
+	}
+	else
+	{
+		DashDirection = PlayerCamera->GetForwardVector();
+	}
+	
+	if (IsMovingOnGround())
+	{
+		DashDirection.Z = 0.0f;
+	}
+	
+	DashDirection.Normalize();
+
+	if (bDashDebug)
+	{
+		DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() + DashDirection * DashDistance, DashDebugColor, false, 20);
+	}
+
+	bIsDashing = true;
+	bCanDash = false;
+	bCooldownStarted = true;
+	DashElapsedTime = 0.0f;
+
+	OriginalBrakingFrictionFactor = BrakingFrictionFactor;
+	OriginalAirControl = AirControl;
+	
+	BrakingFrictionFactor = 0.0f;
+	AirControl = 1.0f;
+	SetMovementMode(MOVE_Falling);
+	Velocity = FVector::ZeroVector;
+
+	DashCurrentVelocity = DashDirection * (DashDistance / DashTime);
+
+	FTimerHandle TimerHandle;
+	GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UHelltechMovementComponent::ResetDash, DashCooldown, false);
+}
+
+void UHelltechMovementComponent::ResetDash()
+{
+	bCanDash = true;
+}
+
+void UHelltechMovementComponent::FindDashProgressBar()
+{
+	if (!GetWorld())
+	{
+		return;
+	}
+	
+	TArray<UUserWidget*> FoundWidgets;
+	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(GetWorld(), FoundWidgets, UDashProgressBarWidget::StaticClass(), false);
+
+	if (FoundWidgets.Num() > 0)
+	{
+		DashProgressBar = Cast<UDashProgressBarWidget>(FoundWidgets[0]);
+	}
 }
