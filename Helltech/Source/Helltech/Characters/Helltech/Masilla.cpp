@@ -34,8 +34,8 @@ void AMasilla::HandleAttack() {
 		return;
 	}
 
-	Attack(Player);
-
+	bGoingToAttack = true;
+	
 	GetWorld()->GetTimerManager().SetTimer(
 		AttackCooldownHandle, 
 		this,
@@ -52,7 +52,9 @@ void AMasilla::Attack(ACharacter* PlayerTarget)
 		SetEnemyCollisionEnabled(false);
 	}
 
-	UGameplayStatics::ApplyDamage(PlayerTarget, Damage, AIController, this, nullptr);
+	float Distance = FVector::Dist(GetActorLocation(), Player->GetActorLocation());
+	if (Distance <= AttackRange) 
+		UGameplayStatics::ApplyDamage(PlayerTarget, Damage, AIController, this, nullptr);
 
 	if (bDisableEnemyCollisions)
 	{
