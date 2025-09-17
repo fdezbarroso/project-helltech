@@ -11,27 +11,36 @@ class AZoneTrigger;
 class AEnemyBase;
 
 USTRUCT(BlueprintType)
-struct FHordeWave
+struct FEnemySpawnEntry
 {
-	GENERATED_BODY()
+	GENERATED_BODY();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	TSubclassOf<AEnemyBase> EnemyClass;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	int32 Count = 5;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float SpawnInterval = 0.25f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float DelayBeforeWave = 1.5f;
+	int32 Count = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float HealthMultiplier = 1.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float DamageMultiplier = 1.0f;
+};
+
+USTRUCT(BlueprintType)
+struct FHordeWave
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<FEnemySpawnEntry> Enemies;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float SpawnInterval = 0.25f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float DelayBeforeWave = 1.5f;
 };
 
 USTRUCT(BlueprintType)
@@ -73,7 +82,7 @@ public:
 private:
 	TArray<ASpawnPoint*> EnemySpawnPoints;
 	TArray<ASpawnPoint*> ActiveSpawnPoints;
-
+	
 	FName CurrentZone;
 	int32 CurrentWave = -1;
 	FTimerHandle WaveTimer;
@@ -82,6 +91,10 @@ private:
 	int32 RemainingToSpawn = 0;
 	FHordeWave ActiveWave;
 
+	int32 CurrentSpawnIndex = 0;
+
+	int32 RemainingOfCurrentType = 0;
+	
 	// For avoiding starting horde more than once when triggering a zone
 	UPROPERTY(EditAnywhere, Category="Hordes")
 	bool bHordeRunning = false;

@@ -26,10 +26,7 @@ void AEnemyBase::BeginPlay()
 	Health = BaseHealth;
 	GetCharacterMovement()->MaxWalkSpeed = Speed;
 
-	if (!FindComponentByClass<UZoneActivableComponent>())
-	{
-		OnZoneActivated();
-	}
+	OnZoneActivated();
 }
 
 void AEnemyBase::Tick(float DeltaTime)
@@ -113,6 +110,7 @@ void AEnemyBase::HandleIdle(float DeltaSeconds)
 	{
 		IdleTimer = 0.0f;
 		CurrentState = EEnemyState::Patrol;
+		bHasTargetPatrol = false;
 	}
 
 	CheckPlayerDetection();
@@ -138,7 +136,10 @@ void AEnemyBase::HandleChase()
 		CurrentState = EEnemyState::Attack;
 	}
 
-	UAIBlueprintHelperLibrary::SimpleMoveToLocation(AIController, Player->GetActorLocation());
+	if (AIController)
+	{
+		AIController->MoveToActor(Player );
+	}
 }
 
 void AEnemyBase::HandleAttack()
@@ -177,6 +178,11 @@ void AEnemyBase::OnZoneActivated() {
 	if (AIController == nullptr)
 	{
 		AIController = Cast<AAIController>(GetController());
+		if (!AIController)
+		{
+			SpawnDefaultController();
+			AIController = Cast<AAIController>(GetController());
+		}
 	}
 
 	CurrentState = EEnemyState::Idle;
