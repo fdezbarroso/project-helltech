@@ -121,10 +121,11 @@ void AHordManager::StartNextWave()
 	}
 
 	ActiveWave = Waves[CurrentWave];
-	RemainingToSpawn = ActiveWave.Count;
+	CurrentSpawnIndex = 0;
+	RemainingOfCurrentType = (ActiveWave.Enemies.Num() > 0) ? ActiveWave.Enemies[0].Count : 0;
 	
-	UE_LOG(LogTemp, Display, TEXT("Zone %s -> Wave %d (Count=%d, Interval=%.2f)"),
-	   *CurrentZone.ToString(), CurrentWave, ActiveWave.Count, ActiveWave.SpawnInterval);
+	// UE_LOG(LogTemp, Display, TEXT("Zone %s -> Wave %d (Count=%d, Interval=%.2f)"),
+	//    *CurrentZone.ToString(), CurrentWave, ActiveWave.Count, ActiveWave.SpawnInterval);
 
 	GetWorldTimerManager().SetTimer(WaveTimer, [this]()
 	{
@@ -134,10 +135,10 @@ void AHordManager::StartNextWave()
 
 void AHordManager::OnEnemyDestroyed(AActor* DestroyedActor)
 {
-	FMath::Max(0, --EnemiesAlive);
+	EnemiesAlive = FMath::Max(0, --EnemiesAlive);
 	UE_LOG(LogTemp, Display, TEXT("Enemy destroyed on horde manager. Alive=%d"), EnemiesAlive);
 	
-	if (EnemiesAlive <= 0)
+	if (EnemiesAlive <= 0 && bWaitAllDead)
 	{
 		StartNextWave();
 	}
@@ -146,11 +147,10 @@ void AHordManager::OnEnemyDestroyed(AActor* DestroyedActor)
 
 void AHordManager::SpawnOne()
 {
-	if (RemainingToSpawn <= 0) {
+	if (!ActiveWave.Enemies.IsValidIndex(CurrentSpawnIndex)) {
 		GetWorldTimerManager().ClearTimer(SpawnTimer);
 
 		if (bWaitAllDead) {
-			GetWorldTimerManager().ClearTimer(WaitForAllDeadTimer);
 			GetWorldTimerManager().SetTimer(WaitForAllDeadTimer, [this]()
 			{
 				if (EnemiesAlive <= 0)
@@ -165,29 +165,67 @@ void AHordManager::SpawnOne()
 		}
 		return;
 	}
+
+	int32 TotalEnemies = 0;
+	for (const FEnemySpawnEntry& E : ActiveWave.Enemies) { TotalEnemies += E.Count; }
+
+	UE_LOG(LogTemp, Display, TEXT("Zone %s -> Wave %d (Total=%d, Interval=%.2f)"),
+		*CurrentZone.ToString(), CurrentWave, TotalEnemies, ActiveWave.SpawnInterval);
+
+	const FEnemySpawnEntry& Entry = ActiveWave.Enemies[CurrentSpawnIndex];
+	
+	if (RemainingOfCurrentType <= 0)
+	{
+		CurrentSpawnIndex++;
+		if (ActiveWave.Enemies.IsValidIndex(CurrentSpawnIndex))
+		{
+			RemainingOfCurrentType = ActiveWave.Enemies[CurrentSpawnIndex].Count;
+		}
+		else
+		{
+			GetWorldTimerManager().ClearTimer(SpawnTimer);
+
+			if (bWaitAllDead)
+			{
+				GetWorldTimerManager().SetTimer(WaitForAllDeadTimer, [this]()
+				{
+					if (EnemiesAlive <= 0)
+					{
+						GetWorldTimerManager().ClearTimer(WaitForAllDeadTimer);
+						StartNextWave();
+					}
+				}, 0.5f, true);
+			}
+			else
+			{
+				GetWorldTimerManager().SetTimer(WaveTimer, this, &AHordManager::StartNextWave, TimeBetweenWaves, false);
+			}
+		}
+		return;
+	}
 	
 	ASpawnPoint* SpawnP = PickRandomSpawn();
-	if (!SpawnP ||!ActiveWave.EnemyClass) {
-		RemainingToSpawn = 0;
-		GetWorldTimerManager().ClearTimer(SpawnTimer);
+	if (!SpawnP ||!Entry.EnemyClass) {
+		RemainingOfCurrentType = 0;
 		return;
 	}
 
 	FVector Location = SpawnP->GetActorLocation();
 	FRotator Rotation = FRotator::ZeroRotator;
-	AEnemyBase* SpawnedEnemy = GetWorld()->SpawnActor<AEnemyBase>(ActiveWave.EnemyClass, Location, Rotation);
+	
+	AEnemyBase* SpawnedEnemy = GetWorld()->SpawnActor<AEnemyBase>(Entry.EnemyClass, Location, Rotation);
 
 	if (SpawnedEnemy)
 	{
-		SpawnedEnemy->IncreaseDifficulty(ActiveWave.HealthMultiplier, ActiveWave.DamageMultiplier);
-		EnemiesAlive = FMath::Max(0, ++EnemiesAlive);
+		SpawnedEnemy->IncreaseDifficulty(Entry.HealthMultiplier, Entry.DamageMultiplier);
+		EnemiesAlive++;
 		SpawnedEnemy->OnDestroyed.AddDynamic(this, &AHordManager::OnEnemyDestroyed);
 	}
 	else
 	{
-		UE_LOG(LogTemp, Error, TEXT("SpawnActor failed for class %s"), *ActiveWave.EnemyClass->GetName());
-	}
-	RemainingToSpawn--;
+		UE_LOG(LogTemp, Error, TEXT("SpawnActor failed for class %s"),
+			   Entry.EnemyClass ? *Entry.EnemyClass->GetName() : TEXT("None"));	}
+	RemainingOfCurrentType--;
 }
 
 ASpawnPoint* AHordManager::PickRandomSpawn() const
@@ -199,16 +237,17 @@ ASpawnPoint* AHordManager::PickRandomSpawn() const
 	{
 		Weigth += FMath::Max(1, sp->Weight);
 	}
+	
 	int32 Pick = FMath::RandRange(1, Weigth);
-	int32 i = 0;
+	int32 Accum = 0;
+	
 	for (ASpawnPoint* SP : ActiveSpawnPoints)
 	{
-		i += FMath::Max(1, SP->Weight);
-		if (Pick <= i)
+		Accum += FMath::Max(1, SP->Weight);
+		if (Pick <= Accum)
 		{
 			return SP;
 		}
 	}
 	return ActiveSpawnPoints.Last();
 }
-
