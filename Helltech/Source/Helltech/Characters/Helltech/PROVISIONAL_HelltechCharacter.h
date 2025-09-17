@@ -114,14 +114,80 @@ protected:
 #pragma endregion Dash
 
 #pragma region WallRun
+protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
 	float WallRunSpeed = 900.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
-	float WallRunGravityScale = 0.3f;
+	float WallDetectionDistance = 75.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
-	float WallRunCameraTilt = 15.f;
+	float WallRunDuration = 4.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
+	float WallRunJumpPower = 800.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
+	float WallDetectionCapsuleRadius = 50.0f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
+	float WallDetectionCapsuleHalfHeight = 50.f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="WallRun")
+	UCapsuleComponent* WallCapsuleDetector;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|Camera")
+	float WallRunCameraTilt = 20.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|Camera")
+	float CameraAlignInterpSpeed = 5.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|Camera")
+	float WallRunViewOffset = 5.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|Surface")
+	TEnumAsByte<ECollisionChannel> WallRunTraceChannel = ECC_WorldStatic;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|Surface")
+	FName WallRunTag = "WallRun";
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|Conditions")
+	float MaxViewAngleFromWall = 50.f;
+
+private:
+	EWallRunSide CurrentWallRunSide = EWallRunSide::None;
+	FTimerHandle WallRunTimerHandle;
+	bool bIsWallRunning = false;
+	bool bCanDoWallRunning = true;
+	bool bIsTouchingWall = false;
+	float previousGravityScale = 0.f;
+	FVector WallNormalVar;
+	float ForwardAxisValue = 0.f;
+	float RightAxisValue = 0.f;
+	float WallRunGravityScale = 0.0f;
+	UPROPERTY()
+	AActor* WallRunWall;
+	float CurrentWallrunTilt = 0.f;
+	float TargetWallrunTilt = 0.f;
+
+	// Main functions
+	void CheckForWall();
+	void CheckWallRunCollision();
+	bool CanSurfaceBeWallrun(const FHitResult& Hit) const;
+	void StartWallRun(EWallRunSide Side, const FVector& WallNormal, AActor* Wall);
+	void StopWallRun();
+	void PerformWallRunMovement();
+	UFUNCTION()
+	void OnCollisionBeginDetectWallrunCapsule(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult);
+	UFUNCTION()
+	void OnCollisionEndDetectWallrunCapsule(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
+
+	// Camera
+	void UpdateCameraTilt(float DeltaTime);
+
+	// Input
+	UFUNCTION(BlueprintCallable)
+	void JumpPressed();
 #pragma endregion WallRun
 
 #pragma region Utilities
@@ -139,6 +205,10 @@ protected:
 	FColor CODE_DashDebugColor = FColor::Red;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Dash|DEBUG")
 	FColor CODE_InertiaDebugColor = FColor::Magenta;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|DEBUG")
+	bool WallrunDebug = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|DEBUG")
+	FColor WallrunDetectorColor = FColor::Cyan;
 	bool DebugPostDashUntilTouchGround = false;
 	float ElapsedTimePostDashUntilTouchGround = 0.f;
 	float CooldownDebugUntilTouchGround = 0.2f;
