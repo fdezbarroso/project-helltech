@@ -1,12 +1,13 @@
 #include "Characters/Helltech/Tanque.h"
 
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 ATanque::ATanque() {
-	BaseHealth = 300.0f;
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+	
 	Health = BaseHealth;
-
-	Damage = 40.0f;
 }
 
 void ATanque::BeginPlay()
@@ -16,19 +17,69 @@ void ATanque::BeginPlay()
 
 void ATanque::HandleAttack()
 {
-	Super::HandleAttack();
+	if (!Player || GetWorld()->GetTimerManager().IsTimerActive(AttackCooldownHandle))
+	{
+		return;
+	}
 	
-	Attack(Player);
+	float Distance = FVector::Dist(GetActorLocation(), Player->GetActorLocation());
+
+	if (Distance > AttackRange)
+	{
+		CurrentState = EEnemyState::Chase;
+		return;
+	}
+	
+	bGoingToAttack = true;
+	
+	GetWorld()->GetTimerManager().SetTimer(
+		AttackCooldownHandle, 
+		this,
+		&ATanque::RestartCollision,
+		AttackCooldown, 
+		false
+	);
 }
 
 
-void ATanque::Attack(ACharacter* PlayerTarget)
+void ATanque::AttackTank(ACharacter* PlayerTarget)
 {
-	if (PlayerTarget)
+	if (bDisableEnemyCollisions)
 	{
-		FVector KnockbackDirection = (PlayerTarget->GetActorForwardVector() - GetActorLocation()).GetSafeNormal();
-		KnockbackDirection.Z = KnockbackInZ;
+		SetEnemyCollisionEnabled(false);
+	}
+	
+	float Distance = FVector::Dist(GetActorLocation(), Player->GetActorLocation());
+	if (Distance <= AttackRange) 
+		UGameplayStatics::ApplyDamage(PlayerTarget, Damage, AIController, this, nullptr);
 		
-		PlayerTarget->LaunchCharacter(KnockbackDirection * KnocbackForce, true, true);
+	FVector KnockbackDirection = (this->GetActorForwardVector()).GetSafeNormal();
+	KnockbackDirection.Z = KnockbackInZ;
+	PlayerTarget->LaunchCharacter(KnockbackDirection * KnocbackForce, true, true);
+
+	if (bDisableEnemyCollisions)
+	{
+		FTimerHandle TimerHandle;
+		GetWorld()->GetTimerManager().SetTimer(
+			TimerHandle,
+			FTimerDelegate::CreateUObject(this, &ATanque::SetEnemyCollisionEnabled, true),
+			0.2f,
+			false
+		);
+	}
+}
+
+void ATanque::SetEnemyCollisionEnabled(bool bEnabled)
+{
+	UCapsuleComponent* Capsule = GetCapsuleComponent();
+
+	if (!Capsule) return;
+
+	if (bEnabled)
+	{
+		Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Block);
+	} else
+	{
+		Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	}
 }

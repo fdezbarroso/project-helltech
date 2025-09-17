@@ -11,7 +11,7 @@ class HELLTECH_API ATanque : public AMasilla
 
 public:
 	ATanque();
-
+	
 protected:
 	virtual void BeginPlay() override;
 
@@ -23,6 +23,15 @@ protected:
 
 	virtual void HandleAttack() override;
 
-	void Attack(ACharacter* PlayerTarget);
+private:
+	FTimerHandle AttackCooldownHandle;
+
+	UFUNCTION(BlueprintCallable, Category = "Masilla")
+	void AttackTank(ACharacter* Player);
 	
+	void SetEnemyCollisionEnabled(bool bEnabled);
+	void RestartCollision()
+	{
+		SetEnemyCollisionEnabled(true);
+	}
 };

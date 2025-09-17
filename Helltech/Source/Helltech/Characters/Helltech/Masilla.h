@@ -18,15 +18,21 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Masilla")
 	bool bDisableEnemyCollisions = true;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Masilla")
+	bool bGoingToAttack = false;
+
 	virtual void HandleAttack() override;
+	
 
 protected:
 	virtual void BeginPlay() override;
 
 private:
 	FTimerHandle AttackCooldownHandle;
-	
+
+	UFUNCTION(BlueprintCallable, Category = "Masilla")
 	void Attack(ACharacter* Player);
+	
 	void SetEnemyCollisionEnabled(bool bEnabled);
 	void RestartCollision()
 	{
