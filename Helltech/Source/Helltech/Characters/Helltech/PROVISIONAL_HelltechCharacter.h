@@ -152,6 +152,9 @@ protected:
 	float WallRunViewOffset = 5.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|Surface")
+	TSubclassOf<AActor> WallRunClass;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|Surface")
 	TEnumAsByte<ECollisionChannel> WallRunTraceChannel = ECC_WorldStatic;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|Surface")
@@ -166,7 +169,6 @@ private:
 	bool bIsWallRunning = false;
 	bool bCanDoWallRunning = true;
 	bool bIsTouchingWall = false;
-	bool bWallRunnableDetected = false;
 	float previousGravityScale = 0.f;
 	FVector WallNormalVar;
 	float ForwardAxisValue = 0.f;
