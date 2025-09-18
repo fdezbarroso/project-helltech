@@ -32,6 +32,15 @@ void UHelltechBar::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	{
 		HelltechCharacterCamera->FieldOfView = FMath::FInterpTo(HelltechCharacterCamera->FieldOfView, TargetCameraFOV, InDeltaTime, CameraFOVInterpSpeed);
 	}
+
+	if (bHelltechModeActive)
+	{
+		ActualHelltechProgressionVelocity = -DescendBarVelocity;
+	}
+	else
+	{
+		ActualHelltechProgressionVelocity = HelltechPassiveProgressionVelocity;
+	}
 }
 
 void UHelltechBar::NativeConstruct()
@@ -68,7 +77,6 @@ void UHelltechBar::SetHelltechBar(UProgressBar* HelltechBar)
 void UHelltechBar::PassiveBarMovement(float Velocity)
 {
 	HelltechPassiveProgressionVelocity = Velocity;
-	ActualHelltechProgressionVelocity = Velocity;
 }
 
 void UHelltechBar::StopHelltechBarMovement()

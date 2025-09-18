@@ -116,7 +116,7 @@ protected:
 #pragma region WallRun
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
-	float WallRunSpeed = 900.f;
+	float WallRunSpeed = 0.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
 	float WallDetectionDistance = 75.f;
@@ -136,6 +136,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="WallRun")
 	UCapsuleComponent* WallCapsuleDetector;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
+	float ProyectedZAngleToStartWallrunUp = 0.4f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|Camera")
 	float WallRunCameraTilt = 20.f;
 
@@ -152,7 +155,7 @@ protected:
 	FName WallRunTag = "WallRun";
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|Conditions")
-	float MaxViewAngleFromWall = 50.f;
+	float MaxViewAngleFromWall = 150.f;
 
 private:
 	EWallRunSide CurrentWallRunSide = EWallRunSide::None;
@@ -169,6 +172,8 @@ private:
 	AActor* WallRunWall;
 	float CurrentWallrunTilt = 0.f;
 	float TargetWallrunTilt = 0.f;
+	bool bIsWallrunningUp = false;
+	float previousWallRunSpeed = 0.f;
 
 	// Main functions
 	void CheckForWall();

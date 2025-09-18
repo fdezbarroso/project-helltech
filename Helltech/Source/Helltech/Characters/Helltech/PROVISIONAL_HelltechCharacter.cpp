@@ -21,6 +21,8 @@ void APROVISIONAL_HelltechCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
+	previousWallRunSpeed = WallRunSpeed;
+	
 	if (!PlayerCamera)
 	{
 		PlayerCamera = FindComponentByClass<UCameraComponent>();
@@ -56,6 +58,11 @@ void APROVISIONAL_HelltechCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	//--------------------WALLRUN-------------------
+
+	if (previousWallRunSpeed == 0.f)
+	{
+		WallRunSpeed = GetCharacterMovement()->GetMaxSpeed();
+	}
 	
 	if (bIsTouchingWall && bIsWallRunning)
 	{
@@ -314,7 +321,7 @@ void APROVISIONAL_HelltechCharacter::CheckForWall()
 
 		WallCapsuleDetector->SetCapsuleRadius(WallDetectionCapsuleRadius);
 		WallCapsuleDetector->SetCapsuleHalfHeight(WallDetectionCapsuleHalfHeight);
-        FHitResult HitRight, HitLeft;
+        FHitResult HitRight, HitLeft, HitFront;
         FCollisionQueryParams Params;
         Params.AddIgnoredActor(this);
 
@@ -322,10 +329,12 @@ void APROVISIONAL_HelltechCharacter::CheckForWall()
         {
             DrawDebugLine(GetWorld(), Start, Start + Right * WallDetectionDistance, WallrunDetectorColor, false, 0.1);
             DrawDebugLine(GetWorld(), Start, Start - Right * WallDetectionDistance, WallrunDetectorColor, false, 0.1);
+        	DrawDebugLine(GetWorld(), Start, Start + GetActorForwardVector() * WallCapsuleDetector->GetUnscaledCapsuleRadius() * 1.2, WallrunDetectorColor, false, 0.1);
         }
 
         bool bHitRight = GetWorld()->LineTraceSingleByChannel(HitRight, Start, Start + Right * WallDetectionDistance, WallRunTraceChannel, Params);
         bool bHitLeft = GetWorld()->LineTraceSingleByChannel(HitLeft, Start, Start - Right * WallDetectionDistance, WallRunTraceChannel, Params);
+		bool bHitFront = GetWorld()->LineTraceSingleByChannel(HitFront, Start, Start + GetActorForwardVector() * WallCapsuleDetector->GetUnscaledCapsuleRadius() * 1.2, WallRunTraceChannel, Params);
 
         // Check for starting wallrun
         if (bHitRight && CanSurfaceBeWallrun(HitRight))
@@ -344,6 +353,14 @@ void APROVISIONAL_HelltechCharacter::CheckForWall()
                 return;
             }
         }
+		else if (bHitFront && CanSurfaceBeWallrun(HitFront))
+		{
+			if (!bIsWallRunning && bCanDoWallRunning)
+			{
+				StartWallRun(EWallRunSide::Right, HitFront.ImpactNormal, HitFront.GetActor());
+				return;
+			}
+		}
     }
     else if (bIsWallRunning)
     {
@@ -368,8 +385,9 @@ void APROVISIONAL_HelltechCharacter::CheckWallRunCollision()
 // Si tiene tag, no está poco empinado y el player está mirando lo suficiente a la pared
 bool APROVISIONAL_HelltechCharacter::CanSurfaceBeWallrun(const FHitResult& Hit) const
 {
+	AActor* HitActor = Hit.GetActor();
 	// Verificar que el actor tenga el tag correcto
-	if (!WallRunTag.IsNone() && Hit.GetActor() && !Hit.GetActor()->ActorHasTag(WallRunTag))
+	if (WallRunTag.IsNone() || !Hit.GetActor() || !Hit.GetActor()->ActorHasTag(WallRunTag))
 	{
 		return false;
 	}
@@ -445,23 +463,47 @@ void APROVISIONAL_HelltechCharacter::PerformWallRunMovement()
 	if (!bIsWallRunning) return;
 
 	// Obtener dirección del input del controlador
-	FRotator ControlRot = Controller->GetControlRotation();
-	FRotator YawRot(0, ControlRot.Yaw, 0);
 
-	FVector ForwardDir = FRotationMatrix(YawRot).GetUnitAxis(EAxis::X);
-	FVector RightDir = FRotationMatrix(YawRot).GetUnitAxis(EAxis::Y);
-
-	FVector InputVector = (ForwardDir * ForwardAxisValue + RightDir * RightAxisValue).GetSafeNormal();
+	FVector InputVector;
     
 	// Calcular dirección de movimiento a lo largo de la pared
 	FVector WallDir;
 	if (WallRunWall)
 	{
-		WallDir = WallRunWall->GetActorForwardVector();
+		if (bIsWallrunningUp)
+		{
+			InputVector = (FVector::UpVector * ForwardAxisValue).GetSafeNormal();
+			WallDir = FVector::UpVector;
+		}
+		else
+		{
+			FRotator ControlRot = Controller->GetControlRotation();
+			FRotator YawRot(0, ControlRot.Yaw, 0);
+
+			FVector ForwardDir = FRotationMatrix(YawRot).GetUnitAxis(EAxis::X);
+			FVector RightDir = FRotationMatrix(YawRot).GetUnitAxis(EAxis::Y);
+			InputVector = (ForwardDir * ForwardAxisValue + RightDir * RightAxisValue).GetSafeNormal();
+			WallDir = WallRunWall->GetActorForwardVector();
+		}
 	}
 	else
 	{
-		WallDir = FVector::CrossProduct(WallNormalVar, FVector::UpVector).GetSafeNormal();
+		if (bIsWallrunningUp)
+		{
+			InputVector = (FVector::UpVector * ForwardAxisValue).GetSafeNormal();
+			WallDir = FVector::UpVector;
+		}
+		else
+		{
+			
+			FRotator ControlRot = Controller->GetControlRotation();
+			FRotator YawRot(0, ControlRot.Yaw, 0);
+
+			FVector ForwardDir = FRotationMatrix(YawRot).GetUnitAxis(EAxis::X);
+			FVector RightDir = FRotationMatrix(YawRot).GetUnitAxis(EAxis::Y);
+			InputVector = (ForwardDir * ForwardAxisValue + RightDir * RightAxisValue).GetSafeNormal();
+			WallDir = FVector::CrossProduct(WallNormalVar, FVector::UpVector).GetSafeNormal();
+		}
 	}
     
 	// Proyectar el input del jugador sobre la dirección de la pared
@@ -537,6 +579,14 @@ void APROVISIONAL_HelltechCharacter::UpdateCameraTilt(float DeltaTime)
 		float Angle = FMath::RadiansToDegrees(FMath::Acos(FMath::Abs(Dot))); // Usar Abs aquí
 
 		FVector Cross = FVector::CrossProduct(WallNormal, ForwardCamera);
+		if (Cross.Z < ProyectedZAngleToStartWallrunUp && Cross.Z > -ProyectedZAngleToStartWallrunUp && Dot < 0.f)
+		{
+			bIsWallrunningUp = true;
+		}
+		else
+		{
+			bIsWallrunningUp = false;
+		}
 		float Sign = FMath::Sign(Cross.Z);
 
 		float Alpha = FMath::Clamp(Angle / 90.f, 0.f, 1.f);
@@ -555,7 +605,7 @@ void APROVISIONAL_HelltechCharacter::UpdateCameraTilt(float DeltaTime)
 			AddControllerRollInput(RollInput);
 		}
 		
-		// DEBUG: Imprimir valores para identificar el problema
+		// DEBUG: Imprimir valores
 		if (GEngine && WallrunDebug)
 		{
 			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Red, 
@@ -564,6 +614,8 @@ void APROVISIONAL_HelltechCharacter::UpdateCameraTilt(float DeltaTime)
 				FString::Printf(TEXT("CameraForward: %s"), *ForwardCamera.ToString()));
 			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue, 
 				FString::Printf(TEXT("Cross: %s | Sign: %.2f"), *Cross.ToString(), Sign));
+			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue, 
+				FString::Printf(TEXT("Dot: %.2f"), Dot));
 			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, 
 				FString::Printf(TEXT("Angle: %.1f | Alpha: %.2f | TargetRoll: %.2f"), 
 				Angle, Alpha, TargetRoll));
