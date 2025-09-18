@@ -166,6 +166,7 @@ private:
 	bool bIsWallRunning = false;
 	bool bCanDoWallRunning = true;
 	bool bIsTouchingWall = false;
+	bool bWallRunnableDetected = false;
 	float previousGravityScale = 0.f;
 	FVector WallNormalVar;
 	float ForwardAxisValue = 0.f;

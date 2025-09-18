@@ -23,6 +23,7 @@ void APROVISIONAL_HelltechCharacter::BeginPlay()
 
 	previousWallRunHorizontalSpeed = WallRunSpeedHorizontal;
 	previousWallRunVerticalSpeed = WallRunSpeedVertical;
+	previousGravityScale = GetCharacterMovement()->GravityScale;
 	
 	if (!PlayerCamera)
 	{
@@ -344,11 +345,11 @@ void APROVISIONAL_HelltechCharacter::CheckForWall()
 		{
 			float DotRight = FVector::DotProduct(Hit.ImpactNormal, Right);
 
-			if (DotRight > 0.3f)
+			if (DotRight >= 0.f)
 			{
 				StartWallRun(EWallRunSide::Right, Hit.ImpactNormal, Hit.GetActor());
 			}
-			else if (DotRight < -0.3f)
+			else if (DotRight < 0.f)
 			{
 				StartWallRun(EWallRunSide::Left, Hit.ImpactNormal, Hit.GetActor());
 			}
@@ -370,7 +371,7 @@ void APROVISIONAL_HelltechCharacter::CheckWallRunCollision()
 
 	if (WallrunDebug)
 	{
-		DrawDebugCapsule(GetWorld(), Start + CheckDirection * WallDetectionDistance, WallDetectionCapsuleHalfHeight, WallDetectionCapsuleRadius, FQuat::Identity, FColor::Blue, false, 0.1f);
+		DrawDebugCapsule(GetWorld(), Start - CheckDirection * WallDetectionDistance, WallDetectionCapsuleHalfHeight, WallDetectionCapsuleRadius, FQuat::Identity, FColor::Blue, false, 0.1f);
 	}
 }
 
@@ -420,7 +421,6 @@ void APROVISIONAL_HelltechCharacter::StartWallRun(EWallRunSide Side, const FVect
 	}
 	bIsWallRunning = true;
 	// Guardar y cambiar la gravedad
-	previousGravityScale = GetCharacterMovement()->GravityScale;
 	GetCharacterMovement()->GravityScale = WallRunGravityScale;
 
 	// Configurar timer de duración
@@ -434,8 +434,6 @@ void APROVISIONAL_HelltechCharacter::StartWallRun(EWallRunSide Side, const FVect
 
 void APROVISIONAL_HelltechCharacter::StopWallRun()
 {
-	if (!bIsWallRunning) return; // Evitar llamadas múltiples
-
 	bIsWallRunning = false;
 	WallRunWall = nullptr;
 	WallNormalVar = FVector::ZeroVector;
