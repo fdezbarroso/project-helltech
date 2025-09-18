@@ -21,7 +21,8 @@ void APROVISIONAL_HelltechCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	previousWallRunSpeed = WallRunSpeed;
+	previousWallRunHorizontalSpeed = WallRunSpeedHorizontal;
+	previousWallRunVerticalSpeed = WallRunSpeedVertical;
 	
 	if (!PlayerCamera)
 	{
@@ -59,9 +60,13 @@ void APROVISIONAL_HelltechCharacter::Tick(float DeltaTime)
 
 	//--------------------WALLRUN-------------------
 
-	if (previousWallRunSpeed == 0.f)
+	if (previousWallRunHorizontalSpeed == 0.f)
 	{
-		WallRunSpeed = GetCharacterMovement()->GetMaxSpeed();
+		WallRunSpeedHorizontal = GetCharacterMovement()->GetMaxSpeed();
+	}
+	if (previousWallRunVerticalSpeed == 0.f)
+	{
+		WallRunSpeedVertical = GetCharacterMovement()->GetMaxSpeed();
 	}
 	
 	if (bIsTouchingWall && bIsWallRunning)
@@ -318,47 +323,34 @@ void APROVISIONAL_HelltechCharacter::CheckForWall()
     {
         FVector Start = GetActorLocation();
         FVector Right = GetActorRightVector();
+		FVector End = Start + GetVelocity().GetSafeNormal() * WallDetectionDistance;
 
 		WallCapsuleDetector->SetCapsuleRadius(WallDetectionCapsuleRadius);
 		WallCapsuleDetector->SetCapsuleHalfHeight(WallDetectionCapsuleHalfHeight);
-        FHitResult HitRight, HitLeft, HitFront;
+        FHitResult Hit;
         FCollisionQueryParams Params;
         Params.AddIgnoredActor(this);
 
+		FCollisionShape Capsule = FCollisionShape::MakeCapsule(WallDetectionCapsuleRadius, WallDetectionCapsuleHalfHeight);
+		
         if (WallrunDebug)
         {
-            DrawDebugLine(GetWorld(), Start, Start + Right * WallDetectionDistance, WallrunDetectorColor, false, 0.1);
-            DrawDebugLine(GetWorld(), Start, Start - Right * WallDetectionDistance, WallrunDetectorColor, false, 0.1);
-        	DrawDebugLine(GetWorld(), Start, Start + GetActorForwardVector() * WallCapsuleDetector->GetUnscaledCapsuleRadius() * 1.2, WallrunDetectorColor, false, 0.1);
+        	DrawDebugCapsule(GetWorld(), End, Capsule.GetCapsuleHalfHeight(), Capsule.GetCapsuleRadius(), FQuat::Identity, FColor::Cyan, false, 0.1);
         }
 
-        bool bHitRight = GetWorld()->LineTraceSingleByChannel(HitRight, Start, Start + Right * WallDetectionDistance, WallRunTraceChannel, Params);
-        bool bHitLeft = GetWorld()->LineTraceSingleByChannel(HitLeft, Start, Start - Right * WallDetectionDistance, WallRunTraceChannel, Params);
-		bool bHitFront = GetWorld()->LineTraceSingleByChannel(HitFront, Start, Start + GetActorForwardVector() * WallCapsuleDetector->GetUnscaledCapsuleRadius() * 1.2, WallRunTraceChannel, Params);
+        bool bHit = GetWorld()->SweepSingleByChannel(Hit, Start, End, FQuat::Identity, WallRunTraceChannel, Capsule, Params);
 
-        // Check for starting wallrun
-        if (bHitRight && CanSurfaceBeWallrun(HitRight))
-        {
-            if (!bIsWallRunning && bCanDoWallRunning)
-            {
-                StartWallRun(EWallRunSide::Right, HitRight.ImpactNormal, HitRight.GetActor());
-                return;
-            }
-        }
-        else if (bHitLeft && CanSurfaceBeWallrun(HitLeft))
-        {
-            if (!bIsWallRunning && bCanDoWallRunning)
-            {
-                StartWallRun(EWallRunSide::Left, HitLeft.ImpactNormal, HitLeft.GetActor());
-                return;
-            }
-        }
-		else if (bHitFront && CanSurfaceBeWallrun(HitFront))
+		if (bHit && CanSurfaceBeWallrun(Hit))
 		{
-			if (!bIsWallRunning && bCanDoWallRunning)
+			float DotRight = FVector::DotProduct(Hit.ImpactNormal, Right);
+
+			if (DotRight > 0.3f)
 			{
-				StartWallRun(EWallRunSide::Right, HitFront.ImpactNormal, HitFront.GetActor());
-				return;
+				StartWallRun(EWallRunSide::Right, Hit.ImpactNormal, Hit.GetActor());
+			}
+			else if (DotRight < -0.3f)
+			{
+				StartWallRun(EWallRunSide::Left, Hit.ImpactNormal, Hit.GetActor());
 			}
 		}
     }
@@ -468,12 +460,14 @@ void APROVISIONAL_HelltechCharacter::PerformWallRunMovement()
     
 	// Calcular dirección de movimiento a lo largo de la pared
 	FVector WallDir;
+	float WallRunSpeedChosen = 0.0f;
 	if (WallRunWall)
 	{
 		if (bIsWallrunningUp)
 		{
 			InputVector = (FVector::UpVector * ForwardAxisValue).GetSafeNormal();
 			WallDir = FVector::UpVector;
+			WallRunSpeedChosen = WallRunSpeedVertical;
 		}
 		else
 		{
@@ -484,6 +478,7 @@ void APROVISIONAL_HelltechCharacter::PerformWallRunMovement()
 			FVector RightDir = FRotationMatrix(YawRot).GetUnitAxis(EAxis::Y);
 			InputVector = (ForwardDir * ForwardAxisValue + RightDir * RightAxisValue).GetSafeNormal();
 			WallDir = WallRunWall->GetActorForwardVector();
+			WallRunSpeedChosen = WallRunSpeedHorizontal;
 		}
 	}
 	else
@@ -492,6 +487,7 @@ void APROVISIONAL_HelltechCharacter::PerformWallRunMovement()
 		{
 			InputVector = (FVector::UpVector * ForwardAxisValue).GetSafeNormal();
 			WallDir = FVector::UpVector;
+			WallRunSpeedChosen = WallRunSpeedVertical;
 		}
 		else
 		{
@@ -503,6 +499,7 @@ void APROVISIONAL_HelltechCharacter::PerformWallRunMovement()
 			FVector RightDir = FRotationMatrix(YawRot).GetUnitAxis(EAxis::Y);
 			InputVector = (ForwardDir * ForwardAxisValue + RightDir * RightAxisValue).GetSafeNormal();
 			WallDir = FVector::CrossProduct(WallNormalVar, FVector::UpVector).GetSafeNormal();
+			WallRunSpeedChosen = WallRunSpeedHorizontal;
 		}
 	}
     
@@ -520,7 +517,7 @@ void APROVISIONAL_HelltechCharacter::PerformWallRunMovement()
 	}
 
 	// Aplicar velocidad de wallrun
-	FVector WallRunVelocity = WallMovement * WallRunSpeed;
+	FVector WallRunVelocity = WallMovement * WallRunSpeedChosen;
     
 	GetCharacterMovement()->Velocity = FVector(WallRunVelocity.X, WallRunVelocity.Y, WallRunVelocity.Z);
 }
