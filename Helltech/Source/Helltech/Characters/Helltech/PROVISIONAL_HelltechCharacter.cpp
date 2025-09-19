@@ -6,6 +6,7 @@
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Game/PlasmaRifle.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
@@ -24,6 +25,40 @@ void APROVISIONAL_HelltechCharacter::BeginPlay()
 	previousWallRunHorizontalSpeed = WallRunSpeedHorizontal;
 	previousWallRunVerticalSpeed = WallRunSpeedVertical;
 	previousGravityScale = GetCharacterMovement()->GravityScale;
+	
+	if (!PlayerCamera)
+	{
+		PlayerCamera = FindComponentByClass<UCameraComponent>();
+	}
+	for (UActorComponent* Component : this->GetComponents())
+	{
+		if (Component->GetName() == TEXT("DetectWallCapsule"))
+		{
+			UCapsuleComponent* CapsuleComponentVar = Cast<UCapsuleComponent>(Component);
+			if (CapsuleComponentVar != nullptr)
+			{
+				WallCapsuleDetector = CapsuleComponentVar;
+				break;
+			}
+			
+		}
+	}
+	if (!WallCapsuleDetector || WallCapsuleDetector->GetName() != "DetectWallCapsule")
+	{
+		WallCapsuleDetector = CreateDefaultSubobject<UCapsuleComponent>(TEXT("DetectWallCapsule"));
+		WallCapsuleDetector->SetCapsuleHalfHeight(WallDetectionCapsuleHalfHeight);
+		WallCapsuleDetector->SetCapsuleRadius(WallDetectionCapsuleRadius);
+		WallCapsuleDetector->SetupAttachment(RootComponent);
+	}
+	WallCapsuleDetector->OnComponentBeginOverlap.AddDynamic(this, &APROVISIONAL_HelltechCharacter::OnCollisionBeginDetectWallrunCapsule);
+	WallCapsuleDetector->OnComponentEndOverlap.AddDynamic(this, &APROVISIONAL_HelltechCharacter::OnCollisionEndDetectWallrunCapsule);
+	IsWidgetClassInViewport(GetWorld(), UDashProgressBarWidget::StaticClass());
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = Cast<APawn>(this);
+	FVector SpawnLoc = GetActorLocation();
+	FRotator SpawnRot = GetActorRotation();
 	
 	if (!PlayerCamera)
 	{
