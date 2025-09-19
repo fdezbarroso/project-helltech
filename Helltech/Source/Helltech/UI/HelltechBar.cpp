@@ -16,7 +16,7 @@ void UHelltechBar::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	{
 		if (bBarCanPassiveMove)
 		{
-			HelltechProgressBar->SetPercent(FMath::Clamp(HelltechProgressBar->GetPercent() + ActualHelltechProgressionVelocity / VELOCITY_BOOST_DIVIDER, 0, 1));
+			HelltechProgressBar->SetPercent(FMath::Clamp(HelltechProgressBar->GetPercent() + ActualHelltechProgressionVelocity * InDeltaTime / VELOCITY_BOOST_DIVIDER, 0, 1));
 		}
 		
 		if (HelltechProgressBar->GetPercent() >= 1 && !IsHelltechModeActivated())
@@ -50,7 +50,7 @@ void UHelltechBar::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 		APROVISIONAL_HelltechCharacter* Player = Cast<APROVISIONAL_HelltechCharacter>(BoundPlayer);
 		if (Player)
 		{
-			Player->CurrentWeapon->MultiplyDamage(1);
+			Player->CurrentWeapon->MultiplyDamage(1.f);
 		}
 	}
 }
