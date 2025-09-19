@@ -23,6 +23,8 @@ struct FHelltechModeBoosts
 	int CameraFOVBoost = 20;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	float PlayerSpeedBoost = 1000;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	float DamageMultiplier = 1.f;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnHelltechModeActivation, bool, bActivate, FHelltechModeBoosts, HelltechModeBoosts);
@@ -53,6 +55,12 @@ public:
 	UFUNCTION(BlueprintCallable, meta=(ToolTip="Activates the Helltech Mode"), Category = "HelltechUI|HELLTECH_Mode")
 	void ActivateHelltechMode(bool bActivate, FHelltechModeBoosts HelltechModeBoosts = FHelltechModeBoosts());
 
+	UFUNCTION(BlueprintImplementableEvent, Category="HelltechUI|HELLTECH_Mode")
+	void OnDamageApplied(float Damage);
+
+	UFUNCTION(BlueprintImplementableEvent, Category="HelltechUI|HELLTECH_Mode")
+	void OnDamageTaken(float Damage);
+
 	UFUNCTION(BlueprintCallable, meta=(ToolTip="Gets the actual DescendBarVelocity"), Category = "HelltechUI|HELLTECH_Mode")
 	float GetDescendBarVelocity() const
 	{
@@ -71,6 +79,9 @@ public:
 		return bHelltechModeActive;
 	}
 
+	UFUNCTION(BlueprintCallable, Category= "HelltechUI|HELLTECH_Mode")
+	void BindToPlayer(AActor* PlayerActor);
+	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HelltechUI|HELLTECH_Mode")
 	UCameraComponent* HelltechCharacterCamera;
 
@@ -79,6 +90,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HelltechUI|HELLTECH_Mode")
 	float CameraFOVInterpSpeed = 8;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="HelltechUI|HELLTECH_Mode")
+	TSubclassOf<USkeletalMeshComponent> WeaponClass;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "HelltechUI|HELLTECH_Mode")
 	FHelltechModeBoosts HelltechModeDefaultBoosts = FHelltechModeBoosts();
@@ -93,4 +107,10 @@ private:
 	float ActualHelltechProgressionVelocity = 0.0f;
 	bool bBarCanPassiveMove = true;
 	bool bHelltechModeActive = false;
+	UPROPERTY()
+	AActor* BoundPlayer;
+
+	UFUNCTION()
+	void HandleTakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType,
+		AController* InstigatedBy, AActor* DamageCauser);
 };

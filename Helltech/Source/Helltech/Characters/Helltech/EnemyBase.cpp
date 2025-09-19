@@ -2,6 +2,7 @@
 
 #include "NavigationSystem.h"
 #include "Blueprint/AIBlueprintHelperLibrary.h"
+#include "Components/CapsuleComponent.h"
 #include "Game/ZoneActivableComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -27,6 +28,8 @@ void AEnemyBase::BeginPlay()
 	GetCharacterMovement()->MaxWalkSpeed = Speed;
 
 	OnZoneActivated();
+
+	OriginalMaterial = GetMesh()->GetMaterial(0);
 }
 
 void AEnemyBase::Tick(float DeltaTime)
@@ -61,6 +64,12 @@ void AEnemyBase::IncreaseDifficulty(float HealthMultiply, float DamageMultiply)
 
 float AEnemyBase::GetDamage(float Amount)
 {
+	if (HitMaterial)
+	{
+		GetMesh()->SetMaterial(0, HitMaterial);
+		GetWorldTimerManager().SetTimer(TimerHandle_ResetMaterial, this, &AEnemyBase::ResetMaterial, 0.4f, false);
+	}
+	
 	Health -= Amount;
 	if (Health <= 0 && CurrentState != EEnemyState::Dead)
 	{
@@ -69,11 +78,63 @@ float AEnemyBase::GetDamage(float Amount)
 	return Health;
 }
 
+void AEnemyBase::ResetMaterial()
+{
+	if (OriginalMaterial)
+	{
+		GetMesh()->SetMaterial(0, OriginalMaterial);
+	}
+}
+
 void AEnemyBase::KillEnemy()
 {
+	if (CurrentState == EEnemyState::Dead) return;
+	
 	CurrentState = EEnemyState::Dead;
-	AIController->StopMovement();
-	Destroy();
+
+	if (AIController) {
+		AIController->StopMovement();
+		AIController->UnPossess();
+	} else
+	{
+		AController* Control = GetController();
+		if (Control)
+		{
+			Control->UnPossess();
+		}
+	}
+
+	if (GetCharacterMovement())
+	{
+		GetCharacterMovement()->DisableMovement();
+		GetCharacterMovement()->StopMovementImmediately();
+	}
+
+	if (GetCapsuleComponent())
+	{
+		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
+	}
+
+	USkeletalMeshComponent* SkelMesh = GetMesh();
+	if (SkelMesh)
+	{
+		SkelMesh->SetCollisionProfileName(TEXT("Ragdoll"));
+		SkelMesh->SetAllBodiesSimulatePhysics(true);
+		SkelMesh->SetSimulatePhysics(true);
+		SkelMesh->WakeAllRigidBodies();
+		SkelMesh->WakeAllRigidBodies();
+		SkelMesh->bBlendPhysics = false;
+		SkelMesh->SetAllBodiesPhysicsBlendWeight(1.0f);
+	}
+	
+	SetLifeSpan(7.0f);
+
+	if (SkelMesh && SkelMesh->GetAnimInstance())
+	{
+		SkelMesh->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+		SkelMesh->SetAnimInstanceClass(nullptr);
+	}
 }
 
 void AEnemyBase::HandlePatrol()
