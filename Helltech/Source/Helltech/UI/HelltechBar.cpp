@@ -4,6 +4,7 @@
 #include "UI/HelltechBar.h"
 #include "Blueprint/WidgetTree.h"
 #include "Characters/Helltech/PROVISIONAL_HelltechCharacter.h"
+#include "Game/PlasmaRifle.h"
 
 #define VELOCITY_BOOST_DIVIDER 1000
 
@@ -37,10 +38,20 @@ void UHelltechBar::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 	if (bHelltechModeActive)
 	{
 		ActualHelltechProgressionVelocity = -DescendBarVelocity;
+		APROVISIONAL_HelltechCharacter* Player = Cast<APROVISIONAL_HelltechCharacter>(BoundPlayer);
+		if (Player)
+		{
+			Player->CurrentWeapon->MultiplyDamage(HelltechModeDefaultBoosts.DamageMultiplier);
+		}
 	}
 	else
 	{
 		ActualHelltechProgressionVelocity = HelltechPassiveProgressionVelocity;
+		APROVISIONAL_HelltechCharacter* Player = Cast<APROVISIONAL_HelltechCharacter>(BoundPlayer);
+		if (Player)
+		{
+			Player->CurrentWeapon->MultiplyDamage(1);
+		}
 	}
 }
 

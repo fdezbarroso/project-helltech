@@ -634,30 +634,33 @@ void APROVISIONAL_HelltechCharacter::OnCollisionBeginDetectWallrunCapsule(UPrimi
 
 	bool bHit = GetWorld()->SweepMultiByChannel(Hits, Start, End, FQuat::Identity, WallRunTraceChannel, Capsule, Params);
 
-	FHitResult Hit = Hits[0];
-	if (WallRunClass)
+	if (Hits.Num() > 0)
 	{
-		for (int i = 0; i < Hits.Num(); i++)
+		FHitResult Hit = Hits[0];
+		if (WallRunClass)
 		{
-			if (Hits[i].GetActor() && Hits[i].GetActor()->IsA(WallRunClass))
+			for (int i = 0; i < Hits.Num(); i++)
 			{
-				Hit = Hits[i];
-				break;
+				if (Hits[i].GetActor() && Hits[i].GetActor()->IsA(WallRunClass))
+				{
+					Hit = Hits[i];
+					break;
+				}
 			}
 		}
-	}
-	
-	if (bHit && CanSurfaceBeWallrun(Hit))
-	{
-		float DotRight = FVector::DotProduct(Hit.ImpactNormal, Right);
+		
+		if (bHit && CanSurfaceBeWallrun(Hit))
+		{
+			float DotRight = FVector::DotProduct(Hit.ImpactNormal, Right);
 
-		if (DotRight >= 0.f)
-		{
-			StartWallRun(EWallRunSide::Right, Hit.ImpactNormal, Hit.GetActor());
-		}
-		else if (DotRight < 0.f)
-		{
-			StartWallRun(EWallRunSide::Left, Hit.ImpactNormal, Hit.GetActor());
+			if (DotRight >= 0.f)
+			{
+				StartWallRun(EWallRunSide::Right, Hit.ImpactNormal, Hit.GetActor());
+			}
+			else if (DotRight < 0.f)
+			{
+				StartWallRun(EWallRunSide::Left, Hit.ImpactNormal, Hit.GetActor());
+			}
 		}
 	}
 }
