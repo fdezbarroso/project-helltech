@@ -50,7 +50,7 @@ void APlasmaProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, 
 	if (OtherActor && OtherActor != GetOwner())
 	{
 		UGameplayStatics::ApplyDamage(OtherActor, Damage, GetInstigatorController(), this, nullptr);
-		APROVISIONAL_HelltechCharacter* Player = Cast<APROVISIONAL_HelltechCharacter>(OtherActor);
+		APROVISIONAL_HelltechCharacter* Player = Cast<APROVISIONAL_HelltechCharacter>(GetWorld()->GetFirstPlayerController()->GetPawn());
 		if (Player)
 		{
 			Player->OnDamageDealt.Broadcast(Damage);
