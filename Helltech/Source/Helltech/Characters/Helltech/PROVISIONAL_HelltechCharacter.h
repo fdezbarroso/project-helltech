@@ -45,6 +45,28 @@ class HELLTECH_API APROVISIONAL_HelltechCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Weapon")
+	TSubclassOf<class APlasmaRifle> DefaultWeaponClass;
+
+	UPROPERTY()
+	APlasmaRifle* CurrentWeapon;
+
+	UPROPERTY(EditAnywhere, Category="Weapon")
+	FRotator WeaponRotation = FRotator(10.0f, -10.0f, 90.0f);
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Input")
+	class UInputAction* ShootInputAction;
+
+	UFUNCTION(BlueprintImplementableEvent, Category="AnimationBP")
+	void SetHasRifleOnTrue();
+	
+	UFUNCTION()
+	void StartFire();
+	
+	UFUNCTION()
+	void StopFire();
+	
 #pragma region InheritedFunctions
 
 public:
@@ -106,6 +128,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
 	UInputAction* MovementInputAction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
+	UInputAction* FireInputAction;
+	
 	UPROPERTY(VisibleAnywhere)
 	FMovementKeys2D_PROVISIONAL MovementKeys;
 	
