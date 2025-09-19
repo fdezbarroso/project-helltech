@@ -3,6 +3,7 @@
 
 #include "UI/HelltechBar.h"
 #include "Blueprint/WidgetTree.h"
+#include "Characters/Helltech/PROVISIONAL_HelltechCharacter.h"
 
 #define VELOCITY_BOOST_DIVIDER 1000
 
@@ -48,6 +49,7 @@ void UHelltechBar::NativeConstruct()
 	Super::NativeConstruct();
 
 	OnHelltechModeActivation.AddDynamic(this, &UHelltechBar::ActivateHelltechMode);
+	
 	if (HelltechCharacterCamera)
 	{
 		TargetCameraFOV = HelltechCharacterCamera->FieldOfView;
@@ -136,5 +138,24 @@ void UHelltechBar::ActivateHelltechMode(bool bActivate, FHelltechModeBoosts Hell
 		{
 			HelltechCharacter->MaxWalkSpeed -= HelltechModeBoosts.PlayerSpeedBoost;
 		}
+	}
+}
+
+void UHelltechBar::BindToPlayer(AActor* PlayerActor)
+{
+	if (!PlayerActor) return;
+
+	BoundPlayer = PlayerActor;
+
+	PlayerActor->OnTakeAnyDamage.AddDynamic(this, &UHelltechBar::HandleTakeAnyDamage);
+	Cast<APROVISIONAL_HelltechCharacter>(PlayerActor)->OnDamageDealt.AddDynamic(this, &UHelltechBar::OnDamageApplied);
+}
+
+void UHelltechBar::HandleTakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType,
+	AController* InstigatedBy, AActor* DamageCauser)
+{
+	if (DamagedActor && DamagedActor == BoundPlayer)
+	{
+		OnDamageTaken(Damage);
 	}
 }

@@ -38,6 +38,8 @@ struct FMovementKeys2D_PROVISIONAL
 	}
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnDamageDealt, float, Damage);
+
 UCLASS()
 class HELLTECH_API APROVISIONAL_HelltechCharacter : public ACharacter
 {
@@ -114,6 +116,10 @@ protected:
 #pragma endregion Dash
 
 #pragma region WallRun
+public:
+	UPROPERTY(BlueprintAssignable)
+	FOnDamageDealt OnDamageDealt;
+	
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun|Speed")
 	float WallRunSpeedHorizontal = 0.f;

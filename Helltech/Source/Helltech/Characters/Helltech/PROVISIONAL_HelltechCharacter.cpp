@@ -564,7 +564,7 @@ void APROVISIONAL_HelltechCharacter::OnCollisionBeginDetectWallrunCapsule(UPrimi
 	{
 		for (int i = 0; i < Hits.Num(); i++)
 		{
-			if (Hits[i].GetActor()->IsA(WallRunClass))
+			if (Hits[i].GetActor() && Hits[i].GetActor()->IsA(WallRunClass))
 			{
 				Hit = Hits[i];
 				break;
