@@ -13,8 +13,9 @@
 // Sets default values
 APROVISIONAL_HelltechCharacter::APROVISIONAL_HelltechCharacter()
 {
-	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+ 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+
 }
 
 // Called when the game starts or when spawned
@@ -25,21 +26,22 @@ void APROVISIONAL_HelltechCharacter::BeginPlay()
 	previousWallRunHorizontalSpeed = WallRunSpeedHorizontal;
 	previousWallRunVerticalSpeed = WallRunSpeedVertical;
 	previousGravityScale = GetCharacterMovement()->GravityScale;
-
+	
 	if (!PlayerCamera)
 	{
 		PlayerCamera = FindComponentByClass<UCameraComponent>();
 	}
-	for (UActorComponent *Component : this->GetComponents())
+	for (UActorComponent* Component : this->GetComponents())
 	{
 		if (Component->GetName() == TEXT("DetectWallCapsule"))
 		{
-			UCapsuleComponent *CapsuleComponentVar = Cast<UCapsuleComponent>(Component);
+			UCapsuleComponent* CapsuleComponentVar = Cast<UCapsuleComponent>(Component);
 			if (CapsuleComponentVar != nullptr)
 			{
 				WallCapsuleDetector = CapsuleComponentVar;
 				break;
 			}
+			
 		}
 	}
 	if (!WallCapsuleDetector || WallCapsuleDetector->GetName() != "DetectWallCapsule")
@@ -58,66 +60,33 @@ void APROVISIONAL_HelltechCharacter::BeginPlay()
 	SpawnParams.Instigator = Cast<APawn>(this);
 	FVector SpawnLoc = GetActorLocation();
 	FRotator SpawnRot = GetActorRotation();
-
-	if (!PlayerCamera)
-	{
-		PlayerCamera = FindComponentByClass<UCameraComponent>();
-	}
-	for (UActorComponent *Component : this->GetComponents())
-	{
-		if (Component->GetName() == TEXT("DetectWallCapsule"))
-		{
-			UCapsuleComponent *CapsuleComponentVar = Cast<UCapsuleComponent>(Component);
-			if (CapsuleComponentVar != nullptr)
-			{
-				WallCapsuleDetector = CapsuleComponentVar;
-				break;
-			}
-		}
-	}
-	if (!WallCapsuleDetector || WallCapsuleDetector->GetName() != "DetectWallCapsule")
-	{
-		WallCapsuleDetector = CreateDefaultSubobject<UCapsuleComponent>(TEXT("DetectWallCapsule"));
-		WallCapsuleDetector->SetCapsuleHalfHeight(WallDetectionCapsuleHalfHeight);
-		WallCapsuleDetector->SetCapsuleRadius(WallDetectionCapsuleRadius);
-		WallCapsuleDetector->SetupAttachment(RootComponent);
-	}
-	WallCapsuleDetector->OnComponentBeginOverlap.AddDynamic(this, &APROVISIONAL_HelltechCharacter::OnCollisionBeginDetectWallrunCapsule);
-	WallCapsuleDetector->OnComponentEndOverlap.AddDynamic(this, &APROVISIONAL_HelltechCharacter::OnCollisionEndDetectWallrunCapsule);
-	IsWidgetClassInViewport(GetWorld(), UDashProgressBarWidget::StaticClass());
-
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.Owner = this;
-	SpawnParams.Instigator = Cast<APawn>(this);
-	FVector SpawnLoc = GetActorLocation();
-	FRotator SpawnRot = GetActorRotation();
-
-	APlasmaRifle *CurWeapon = GetWorld()->SpawnActor<APlasmaRifle>(DefaultWeaponClass, SpawnLoc, SpawnRot, SpawnParams);
+	
+	APlasmaRifle* CurWeapon = GetWorld()->SpawnActor<APlasmaRifle>(DefaultWeaponClass, SpawnLoc, SpawnRot, SpawnParams);
 
 	if (!CurWeapon)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Failed to spawn weapon"));
 		return;
 	}
-
+	
 	CurrentWeapon = CurWeapon;
 
 	const FName SocketName(TEXT("GripPoint"));
-	USkeletalMeshComponent *ArmsMesh = nullptr;
+	USkeletalMeshComponent* ArmsMesh = nullptr;
 
-	TArray<USkeletalMeshComponent *> Components;
+	TArray<USkeletalMeshComponent*> Components;
 	GetComponents<USkeletalMeshComponent>(Components);
-
-	for (UActorComponent *Comp : Components)
+	
+	for (UActorComponent* Comp : Components)
 	{
-		USkeletalMeshComponent *Sk = Cast<USkeletalMeshComponent>(Comp);
+		USkeletalMeshComponent* Sk = Cast<USkeletalMeshComponent>(Comp);
 		if (Sk && Sk->DoesSocketExist(SocketName))
 		{
 			ArmsMesh = Sk;
 			break;
 		}
 	}
-
+	
 	if (!ArmsMesh)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("No skeletal mesh with socket %s found on character. Attach weapon to actor root instead."), *SocketName.ToString());
@@ -126,15 +95,16 @@ void APROVISIONAL_HelltechCharacter::BeginPlay()
 	else
 	{
 		CurWeapon->AttachToComponent(ArmsMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
-		CurWeapon->SetActorRelativeRotation(FRotator::ZeroRotator);
+		CurWeapon->SetActorRelativeRotation(FRotator::ZeroRotator); 
 
 		CurWeapon->SetActorRelativeRotation(WeaponRotation);
 
 		CurWeapon->SetActorRelativeLocation(FVector(1.14, 13.54, -10));
-
+		
 		FName PropName = TEXT("HasRifle");
-		SetHasRifleOnTrue();
+		SetHasRifleOnTrue();	
 	}
+
 }
 
 // Called every frame
@@ -152,7 +122,7 @@ void APROVISIONAL_HelltechCharacter::Tick(float DeltaTime)
 	{
 		WallRunSpeedVertical = GetCharacterMovement()->GetMaxSpeed();
 	}
-
+	
 	if (bIsTouchingWall && bIsWallRunning)
 	{
 		bCanDoWallRunning = false;
@@ -182,7 +152,7 @@ void APROVISIONAL_HelltechCharacter::Tick(float DeltaTime)
 			bIsDashing = false;
 
 			GetCharacterMovement()->Velocity = DashCurrentVelocity * CODE_FinalInertiaMultiplicator;
-
+			
 			GetCharacterMovement()->BrakingFrictionFactor = OriginalBrakingFrictionFactor;
 			bTestGroundTouchedAfterDash = true;
 			// Si está en el aire, mantener inercia en caida
@@ -235,7 +205,7 @@ void APROVISIONAL_HelltechCharacter::Tick(float DeltaTime)
 			}
 		}
 	}
-
+	
 #pragma region DEBUG_ZONE
 	/* ---------------------- DEBUG ZONE ---------------------- */
 	if (DebugPostDashUntilTouchGround && !GetCharacterMovement()->IsMovingOnGround())
@@ -258,11 +228,11 @@ void APROVISIONAL_HelltechCharacter::Tick(float DeltaTime)
 }
 
 // Called to bind functionality to input
-void APROVISIONAL_HelltechCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputComponent)
+void APROVISIONAL_HelltechCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	if (UEnhancedInputComponent *EnhancedInput = Cast<UEnhancedInputComponent>(PlayerInputComponent))
+	if (UEnhancedInputComponent* EnhancedInput = Cast<UEnhancedInputComponent>(PlayerInputComponent))
 	{
 		if (MovementInputAction)
 		{
@@ -294,7 +264,7 @@ void APROVISIONAL_HelltechCharacter::StopFire()
 	}
 }
 
-void APROVISIONAL_HelltechCharacter::DetectMovement(const FInputActionValue &Value)
+void APROVISIONAL_HelltechCharacter::DetectMovement(const FInputActionValue& Value)
 {
 	FVector2D result = Value.Get<FVector2D>();
 	if (FMath::IsNearlyEqual(result.Y, 1.f, ForwardMovementCameraTolerance / 100.f))
@@ -335,18 +305,15 @@ void APROVISIONAL_HelltechCharacter::DetectMovement(const FInputActionValue &Val
 
 void APROVISIONAL_HelltechCharacter::Dash()
 {
-	if (!bCanDash || bIsDashing)
-		return;
+	if (!bCanDash || bIsDashing) return;
 
-	// Si tiene DashWithMovement y está en movimiento
+	//Si tiene DashWithMovement y está en movimiento
 	if (CODE_DashWithMovement && (GetCharacterMovement()->Velocity.X != 0 || GetCharacterMovement()->Velocity.Y != 0))
 	{
 		if (MovementInputAction && MovementKeys.IsAnyInputPressed())
 		{
-			DashDirection = GetActorForwardVector() * (MovementKeys.bUp ? 1 : 0 + MovementKeys.bDown ? -1
-																									 : 0) +
-							GetActorRightVector() * (MovementKeys.bRight ? 1.f : 0.f + MovementKeys.bLeft ? -1.f
-																										  : 0.f);
+			DashDirection = GetActorForwardVector() * (MovementKeys.bUp ? 1 : 0 + MovementKeys.bDown ? -1 : 0) +
+				GetActorRightVector() * (MovementKeys.bRight ? 1.f : 0.f + MovementKeys.bLeft ? -1.f : 0.f);
 		}
 		else if (MovementInputAction && !MovementKeys.IsAnyInputPressed())
 		{
@@ -356,43 +323,43 @@ void APROVISIONAL_HelltechCharacter::Dash()
 		{
 			DashDirection = GetCharacterMovement()->Velocity.GetSafeNormal();
 		}
-		// Si está mirando hacia abajo y está en el suelo
+		//Si está mirando hacia abajo y está en el suelo
 		if (GetCharacterMovement()->IsMovingOnGround() && PlayerCamera->GetComponentRotation().Pitch < 0.f)
 		{
-			// Hacia delante (Z)
+			//Hacia delante (Z)
 			DashDirection.Z = 0;
 		}
 		else
 		{
-			// Si se está moviendo hacia delante
+			//Si se está moviendo hacia delante
 			if (!MovementKeys.bDown && !MovementKeys.bRight && !MovementKeys.bLeft)
 			{
-				// Hacia donde esté mirando (Z)
+				//Hacia donde esté mirando (Z)
 				DashDirection.Z = PlayerCamera->GetForwardVector().Z;
 			}
-			// Si se está moviendo hacia otra dirección (esquivar)
+			//Si se está moviendo hacia otra dirección (esquivar)
 			else
 			{
 				DashDirection.Z = 0;
 			}
 		}
 	}
-	// Si está en el suelo y mirando hacia abajo y no se está moviendo
+	//Si está en el suelo y mirando hacia abajo y no se está moviendo
 	else if (GetCharacterMovement()->IsMovingOnGround() && PlayerCamera->GetComponentRotation().Pitch < 0.f && GetCharacterMovement()->Velocity.IsNearlyZero())
 	{
-		// Dash hacia delante
+		//Dash hacia delante
 		DashDirection = GetActorForwardVector().GetSafeNormal();
 	}
-	// Si no está en el suelo
+	//Si no está en el suelo
 	else
 	{
-		// Si tiene camara te mueves hacia donde apunte la camara, sino hacia delante
+		//Si tiene camara te mueves hacia donde apunte la camara, sino hacia delante
 		DashDirection = PlayerCamera ? PlayerCamera->GetForwardVector().GetSafeNormal() : GetActorForwardVector().GetSafeNormal();
 	}
-
+	
 	if (CODE_DashDebug)
 	{
-		DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() + DashDirection * CODE_DashDistance, CODE_DashDebugColor, false, 20);
+		DrawDebugLine(GetWorld(), GetActorLocation(), GetActorLocation() + DashDirection*CODE_DashDistance, CODE_DashDebugColor, false, 20);
 	}
 
 	bIsDashing = true;
@@ -402,7 +369,7 @@ void APROVISIONAL_HelltechCharacter::Dash()
 
 	OriginalBrakingFrictionFactor = GetCharacterMovement()->BrakingFrictionFactor;
 	OriginalAirControl = GetCharacterMovement()->AirControl;
-
+	
 	GetCharacterMovement()->BrakingFrictionFactor = 0;
 	GetCharacterMovement()->SetMovementMode(MOVE_Falling);
 	GetCharacterMovement()->Velocity = FVector::ZeroVector;
@@ -417,7 +384,8 @@ void APROVISIONAL_HelltechCharacter::Dash()
 		this,
 		&APROVISIONAL_HelltechCharacter::ResetDash,
 		CODE_DashCooldown,
-		false);
+		false
+	);
 }
 
 void APROVISIONAL_HelltechCharacter::ResetDash()
@@ -438,7 +406,7 @@ void APROVISIONAL_HelltechCharacter::ResetDash()
 //         Params.AddIgnoredActor(this);
 //
 // 		FCollisionShape Capsule = FCollisionShape::MakeCapsule(WallDetectionCapsuleRadius, WallDetectionCapsuleHalfHeight);
-//
+// 		
 //         if (WallrunDebug)
 //         {
 //         	DrawDebugCapsule(GetWorld(), End, Capsule.GetCapsuleHalfHeight(), Capsule.GetCapsuleRadius(), FQuat::Identity, FColor::Cyan, false, 0.1);
@@ -458,7 +426,7 @@ void APROVISIONAL_HelltechCharacter::ResetDash()
 // 				}
 // 			}
 // 		}
-//
+// 		
 // 		if (bHit && CanSurfaceBeWallrun(Hit))
 // 		{
 // 			float DotRight = FVector::DotProduct(Hit.ImpactNormal, Right);
@@ -482,8 +450,7 @@ void APROVISIONAL_HelltechCharacter::ResetDash()
 
 void APROVISIONAL_HelltechCharacter::CheckWallRunCollision()
 {
-	if (!bIsWallRunning)
-		return;
+	if (!bIsWallRunning) return;
 
 	FVector Start = GetActorLocation();
 	FVector CheckDirection = (CurrentWallRunSide == EWallRunSide::Right) ? GetActorRightVector() : -GetActorRightVector();
@@ -495,9 +462,9 @@ void APROVISIONAL_HelltechCharacter::CheckWallRunCollision()
 }
 
 // Si tiene tag, no está poco empinado y el player está mirando lo suficiente a la pared
-bool APROVISIONAL_HelltechCharacter::CanSurfaceBeWallrun(const FHitResult &Hit) const
+bool APROVISIONAL_HelltechCharacter::CanSurfaceBeWallrun(const FHitResult& Hit) const
 {
-	AActor *HitActor = Hit.GetActor();
+	AActor* HitActor = Hit.GetActor();
 	// Verificar que el actor tenga el tag correcto
 	if (WallRunTag.IsNone() || !Hit.GetActor() || !Hit.GetActor()->ActorHasTag(WallRunTag))
 	{
@@ -522,13 +489,13 @@ bool APROVISIONAL_HelltechCharacter::CanSurfaceBeWallrun(const FHitResult &Hit) 
 	// MEJORADO: Usar tanto la dirección hacia adelante como hacia atrás de la pared
 	float AngleForward = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(Forward, WallDir)));
 	float AngleBackward = FMath::RadiansToDegrees(FMath::Acos(FVector::DotProduct(Forward, -WallDir)));
-
+    
 	float MinAngle = FMath::Min(AngleForward, AngleBackward);
-
+    
 	return MinAngle < MaxViewAngleFromWall;
 }
 
-void APROVISIONAL_HelltechCharacter::StartWallRun(EWallRunSide Side, const FVector &WallNormal, AActor *Wall)
+void APROVISIONAL_HelltechCharacter::StartWallRun(EWallRunSide Side, const FVector& WallNormal, AActor* Wall)
 {
 	WallNormalVar = WallNormal;
 	CurrentWallRunSide = Side;
@@ -557,7 +524,7 @@ void APROVISIONAL_HelltechCharacter::StopWallRun()
 	WallRunWall = nullptr;
 	WallNormalVar = FVector::ZeroVector;
 	CurrentWallRunSide = EWallRunSide::None;
-
+    
 	// Restaurar gravedad
 	GetCharacterMovement()->GravityScale = previousGravityScale;
 
@@ -569,13 +536,12 @@ void APROVISIONAL_HelltechCharacter::StopWallRun()
 
 void APROVISIONAL_HelltechCharacter::PerformWallRunMovement()
 {
-	if (!bIsWallRunning)
-		return;
+	if (!bIsWallRunning) return;
 
 	// Obtener dirección del input del controlador
 
 	FVector InputVector;
-
+    
 	// Calcular dirección de movimiento a lo largo de la pared
 	FVector WallDir;
 	float WallRunSpeedChosen = 0.0f;
@@ -609,7 +575,7 @@ void APROVISIONAL_HelltechCharacter::PerformWallRunMovement()
 		}
 		else
 		{
-
+			
 			FRotator ControlRot = Controller->GetControlRotation();
 			FRotator YawRot(0, ControlRot.Yaw, 0);
 
@@ -620,14 +586,14 @@ void APROVISIONAL_HelltechCharacter::PerformWallRunMovement()
 			WallRunSpeedChosen = WallRunSpeedHorizontal;
 		}
 	}
-
+    
 	// Proyectar el input del jugador sobre la dirección de la pared
 	FVector WallMovement = FVector::DotProduct(InputVector, WallDir) * WallDir;
-
+    
 	// También permitir movimiento en la dirección opuesta
 	FVector OppositeWallDir = -WallDir;
 	FVector OppositeWallMovement = FVector::DotProduct(InputVector, OppositeWallDir) * OppositeWallDir;
-
+    
 	// Usar el movimiento con mayor magnitud
 	if (OppositeWallMovement.Size() > WallMovement.Size())
 	{
@@ -636,13 +602,13 @@ void APROVISIONAL_HelltechCharacter::PerformWallRunMovement()
 
 	// Aplicar velocidad de wallrun
 	FVector WallRunVelocity = WallMovement * WallRunSpeedChosen;
-
+    
 	GetCharacterMovement()->Velocity = FVector(WallRunVelocity.X, WallRunVelocity.Y, WallRunVelocity.Z);
 }
 
-void APROVISIONAL_HelltechCharacter::OnCollisionBeginDetectWallrunCapsule(UPrimitiveComponent *OverlappedComponent,
-																		  AActor *OtherActor, UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep,
-																		  const FHitResult &SweepResult)
+void APROVISIONAL_HelltechCharacter::OnCollisionBeginDetectWallrunCapsule(UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
+	const FHitResult& SweepResult)
 {
 	if (!bIsWallRunning)
 	{
@@ -660,7 +626,7 @@ void APROVISIONAL_HelltechCharacter::OnCollisionBeginDetectWallrunCapsule(UPrimi
 	Params.AddIgnoredActor(this);
 
 	FCollisionShape Capsule = FCollisionShape::MakeCapsule(WallDetectionCapsuleRadius, WallDetectionCapsuleHalfHeight);
-
+	
 	if (WallrunDebug)
 	{
 		DrawDebugCapsule(GetWorld(), End, Capsule.GetCapsuleHalfHeight(), Capsule.GetCapsuleRadius(), FQuat::Identity, FColor::Cyan, false, 0.1);
@@ -668,36 +634,39 @@ void APROVISIONAL_HelltechCharacter::OnCollisionBeginDetectWallrunCapsule(UPrimi
 
 	bool bHit = GetWorld()->SweepMultiByChannel(Hits, Start, End, FQuat::Identity, WallRunTraceChannel, Capsule, Params);
 
-	FHitResult Hit = Hits[0];
-	if (WallRunClass)
+	if (Hits.Num() > 0)
 	{
-		for (int i = 0; i < Hits.Num(); i++)
+		FHitResult Hit = Hits[0];
+		if (WallRunClass)
 		{
-			if (Hits[i].GetActor() && Hits[i].GetActor()->IsA(WallRunClass))
+			for (int i = 0; i < Hits.Num(); i++)
 			{
-				Hit = Hits[i];
-				break;
+				if (Hits[i].GetActor() && Hits[i].GetActor()->IsA(WallRunClass))
+				{
+					Hit = Hits[i];
+					break;
+				}
 			}
 		}
-	}
-
-	if (bHit && CanSurfaceBeWallrun(Hit))
-	{
-		float DotRight = FVector::DotProduct(Hit.ImpactNormal, Right);
-
-		if (DotRight >= 0.f)
+		
+		if (bHit && CanSurfaceBeWallrun(Hit))
 		{
-			StartWallRun(EWallRunSide::Right, Hit.ImpactNormal, Hit.GetActor());
-		}
-		else if (DotRight < 0.f)
-		{
-			StartWallRun(EWallRunSide::Left, Hit.ImpactNormal, Hit.GetActor());
+			float DotRight = FVector::DotProduct(Hit.ImpactNormal, Right);
+
+			if (DotRight >= 0.f)
+			{
+				StartWallRun(EWallRunSide::Right, Hit.ImpactNormal, Hit.GetActor());
+			}
+			else if (DotRight < 0.f)
+			{
+				StartWallRun(EWallRunSide::Left, Hit.ImpactNormal, Hit.GetActor());
+			}
 		}
 	}
 }
 
-void APROVISIONAL_HelltechCharacter::OnCollisionEndDetectWallrunCapsule(UPrimitiveComponent *OverlappedComp,
-																		AActor *OtherActor, UPrimitiveComponent *OtherComp, int32 OtherBodyIndex)
+void APROVISIONAL_HelltechCharacter::OnCollisionEndDetectWallrunCapsule(UPrimitiveComponent* OverlappedComp,
+                                                                        AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	if (OtherActor->ActorHasTag(WallRunTag))
 	{
@@ -708,23 +677,22 @@ void APROVISIONAL_HelltechCharacter::OnCollisionEndDetectWallrunCapsule(UPrimiti
 
 void APROVISIONAL_HelltechCharacter::UpdateCameraTilt(float DeltaTime)
 {
-	UCameraComponent *Camera = nullptr;
-
-	if (PlayerCamera)
-	{
+	UCameraComponent* Camera = nullptr;
+    
+	if (PlayerCamera){
 		Camera = PlayerCamera;
 	}
 	else
 	{
-		TArray<UCameraComponent *> CameraComponents;
+		TArray<UCameraComponent*> CameraComponents;
 		GetComponents<UCameraComponent>(CameraComponents);
-
+        
 		if (CameraComponents.Num() > 0)
 		{
 			Camera = CameraComponents[0];
 		}
 	}
-
+    
 	if (Camera && Controller)
 	{
 		FVector ForwardCamera = Camera->GetForwardVector().GetSafeNormal();
@@ -734,7 +702,7 @@ void APROVISIONAL_HelltechCharacter::UpdateCameraTilt(float DeltaTime)
 		float Dot = FVector::DotProduct(ForwardCamera, WallNormal);
 		float WallSide = FVector::DotProduct(RightCamera, WallNormal);
 		Dot = FMath::Clamp(Dot, -1.f, 1.f);
-
+       
 		float Angle = FMath::RadiansToDegrees(FMath::Acos(FMath::Abs(Dot))); // Usar Abs aquí
 
 		FVector Cross = FVector::CrossProduct(WallNormal, ForwardCamera);
@@ -750,44 +718,44 @@ void APROVISIONAL_HelltechCharacter::UpdateCameraTilt(float DeltaTime)
 
 		float Alpha = FMath::Clamp(Angle / 90.f, 0.f, 1.f);
 		float TargetRoll = Alpha * WallRunCameraTilt * -Sign;
-
+		
 		// En lugar de SetControlRotation, usar AddControllerRollInput
 		float CurrentRoll = Controller->GetControlRotation().Roll;
 		float RollDifference = FMath::FindDeltaAngleDegrees(CurrentRoll, TargetRoll);
 
 		float RollInput = 0.0f;
-
+       
 		// Solo aplicar input si hay una diferencia significativa
 		if (FMath::Abs(RollDifference) > 0.1f)
 		{
 			RollInput = RollDifference * DeltaTime * CameraAlignInterpSpeed;
 			AddControllerRollInput(RollInput);
 		}
-
+		
 		// DEBUG: Imprimir valores
 		if (GEngine && WallrunDebug)
 		{
-			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Red,
-											 FString::Printf(TEXT("WallNormal: %s"), *WallNormal.ToString()));
-			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green,
-											 FString::Printf(TEXT("CameraForward: %s"), *ForwardCamera.ToString()));
-			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
-											 FString::Printf(TEXT("Cross: %s | Sign: %.2f"), *Cross.ToString(), Sign));
-			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
-											 FString::Printf(TEXT("Dot: %.2f"), Dot));
-			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow,
-											 FString::Printf(TEXT("Angle: %.1f | Alpha: %.2f | TargetRoll: %.2f"),
-															 Angle, Alpha, TargetRoll));
-			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Cyan,
-											 FString::Printf(TEXT("WallSide: %.2f | Roll: %.2f"),
-															 WallSide, TargetRoll));
+			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Red, 
+				FString::Printf(TEXT("WallNormal: %s"), *WallNormal.ToString()));
+			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Green, 
+				FString::Printf(TEXT("CameraForward: %s"), *ForwardCamera.ToString()));
+			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue, 
+				FString::Printf(TEXT("Cross: %s | Sign: %.2f"), *Cross.ToString(), Sign));
+			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue, 
+				FString::Printf(TEXT("Dot: %.2f"), Dot));
+			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Yellow, 
+				FString::Printf(TEXT("Angle: %.1f | Alpha: %.2f | TargetRoll: %.2f"), 
+				Angle, Alpha, TargetRoll));
+			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Cyan, 
+			 FString::Printf(TEXT("WallSide: %.2f | Roll: %.2f"), 
+			 WallSide, TargetRoll));
 			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Black,
-											 FString::Printf(TEXT("ControllerRotation: X: %.2f | Y: %.2f | Z: %.2f"),
-															 Controller->GetControlRotation().GetComponentForAxis(EAxis::X),
-															 Controller->GetControlRotation().GetComponentForAxis(EAxis::Y),
-															 Controller->GetControlRotation().GetComponentForAxis(EAxis::Z)));
+				FString::Printf(TEXT("ControllerRotation: X: %.2f | Y: %.2f | Z: %.2f"),
+					Controller->GetControlRotation().GetComponentForAxis(EAxis::X),
+					Controller->GetControlRotation().GetComponentForAxis(EAxis::Y),
+					Controller->GetControlRotation().GetComponentForAxis(EAxis::Z)));
 			GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Magenta,
-											 FString::Printf(TEXT("TargetRoll: %.2f | CurrentRoll: %.2f | RollInput: %.2f | RollDiference: %.2f"), TargetRoll, CurrentRoll, RollInput, RollDifference));
+				FString::Printf(TEXT("TargetRoll: %.2f | CurrentRoll: %.2f | RollInput: %.2f | RollDiference: %.2f"), TargetRoll, CurrentRoll, RollInput, RollDifference));
 		}
 	}
 }
@@ -799,12 +767,12 @@ void APROVISIONAL_HelltechCharacter::JumpPressed()
 		// Obtener dirección de la cámara
 		FRotator CameraRotation = Controller->GetControlRotation();
 		FVector CameraForward = FRotationMatrix(CameraRotation).GetUnitAxis(EAxis::X);
-
+        
 		// Verificar si la cámara está apuntando hacia la pared
 		float DotWithWallNormal = FVector::DotProduct(CameraForward, -WallNormalVar);
-
+        
 		FVector JumpDir;
-
+        
 		if (DotWithWallNormal > 0.3f) // Si está mirando hacia la pared
 		{
 			// Salto direccional alejándose de la pared
@@ -820,7 +788,7 @@ void APROVISIONAL_HelltechCharacter::JumpPressed()
 			JumpDir.Z = FMath::Max(JumpDir.Z, 0.5f); // Asegurar componente vertical mínima
 			JumpDir.Normalize();
 		}
-
+        
 		LaunchCharacter(JumpDir * WallRunJumpPower, false, true);
 		StopWallRun();
 	}
@@ -831,14 +799,14 @@ void APROVISIONAL_HelltechCharacter::JumpPressed()
 	}
 }
 
-bool APROVISIONAL_HelltechCharacter::IsWidgetClassInViewport(UWorld *World, TSubclassOf<UUserWidget> WidgetClass)
+bool APROVISIONAL_HelltechCharacter::IsWidgetClassInViewport(UWorld* World, TSubclassOf<UUserWidget> WidgetClass)
 {
 	if (!World || !*WidgetClass)
 	{
 		return false;
 	}
 
-	TArray<UUserWidget *> FoundWidgets;
+	TArray<UUserWidget*> FoundWidgets;
 	UWidgetBlueprintLibrary::GetAllWidgetsOfClass(World, FoundWidgets, WidgetClass, false);
 
 	if (FoundWidgets.Num() > 0)
@@ -846,6 +814,6 @@ bool APROVISIONAL_HelltechCharacter::IsWidgetClassInViewport(UWorld *World, TSub
 		DashProgressBar = Cast<UDashProgressBarWidget>(FoundWidgets[0]);
 		return true;
 	}
-
+	
 	return false;
 }

@@ -1,6 +1,8 @@
 #include "Game/PlasmaProjectile.h"
 
 #include "SceneRenderTargetParameters.h"
+#include "Characters/Helltech/EnemyBase.h"
+#include "Characters/Helltech/PROVISIONAL_HelltechCharacter.h"
 #include "Components/SphereComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
 #include "Kismet/GameplayStatics.h"
@@ -48,10 +50,15 @@ void APlasmaProjectile::OnHit(UPrimitiveComponent* HitComp, AActor* OtherActor, 
 	if (OtherActor && OtherActor != GetOwner())
 	{
 		UGameplayStatics::ApplyDamage(OtherActor, Damage, GetInstigatorController(), this, nullptr);
-
-		if (ParticleImpact)
+		APROVISIONAL_HelltechCharacter* Player = Cast<APROVISIONAL_HelltechCharacter>(OtherActor);
+		if (Player)
 		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ParticleImpact, Hit.ImpactPoint, Hit.ImpactNormal.Rotation());
+			Player->OnDamageDealt.Broadcast(Damage);
+		}
+		AEnemyBase* Enemy = Cast<AEnemyBase>(OtherActor);
+		if (Enemy)
+		{
+			Enemy->GetDamage(Damage);
 		}
 		if (ImpactSound) UGameplayStatics::PlaySoundAtLocation(this, ImpactSound, Hit.ImpactPoint);
 	}
