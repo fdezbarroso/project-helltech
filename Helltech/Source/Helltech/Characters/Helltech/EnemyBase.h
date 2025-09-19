@@ -81,6 +81,16 @@ public:
 
 	UFUNCTION()
 	virtual void OnZoneActivated();
+
+	UPROPERTY()
+	UMaterialInterface* OriginalMaterial;
+
+	UPROPERTY(EditAnywhere, Category = "Enemy")
+	UMaterialInterface* HitMaterial;
+
+	void ResetMaterial();
+
+	FTimerHandle TimerHandle_ResetMaterial;
 	
 protected:
 	virtual void BeginPlay() override;
