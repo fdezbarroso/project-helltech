@@ -50,12 +50,14 @@ void ATanque::AttackTank(ACharacter* PlayerTarget)
 	}
 	
 	float Distance = FVector::Dist(GetActorLocation(), Player->GetActorLocation());
-	if (Distance <= AttackRange) 
+	if (Distance <= AttackRange)
+	{
 		UGameplayStatics::ApplyDamage(PlayerTarget, Damage, AIController, this, nullptr);
-		
-	FVector KnockbackDirection = (this->GetActorForwardVector()).GetSafeNormal();
-	KnockbackDirection.Z = KnockbackInZ;
-	PlayerTarget->LaunchCharacter(KnockbackDirection * KnocbackForce, true, true);
+	
+		FVector KnockbackDirection = (this->GetActorForwardVector()).GetSafeNormal();
+		KnockbackDirection.Z = KnockbackInZ;
+		PlayerTarget->LaunchCharacter(KnockbackDirection * KnocbackForce, true, true);
+	}
 
 	if (bDisableEnemyCollisions)
 	{
