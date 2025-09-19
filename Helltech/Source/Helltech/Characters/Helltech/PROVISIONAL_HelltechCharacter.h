@@ -137,10 +137,10 @@ protected:
 	float WallRunJumpPower = 800.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
-	float WallDetectionCapsuleRadius = 50.0f;
+	float WallDetectionCapsuleRadius = 75.0f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="WallRun")
-	float WallDetectionCapsuleHalfHeight = 50.f;
+	float WallDetectionCapsuleHalfHeight = 75.f;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category="WallRun")
 	UCapsuleComponent* WallCapsuleDetector;
