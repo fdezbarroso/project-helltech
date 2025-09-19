@@ -5,7 +5,9 @@
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/WidgetBlueprintLibrary.h"
 #include "Camera/CameraComponent.h"
+#include "Game/PlasmaRifle.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "UObject/UnrealTypePrivate.h"
 
 // Sets default values
 APROVISIONAL_HelltechCharacter::APROVISIONAL_HelltechCharacter()
@@ -22,6 +24,57 @@ void APROVISIONAL_HelltechCharacter::BeginPlay()
 
 	PlayerCamera = GetComponentByClass<UCameraComponent>();
 	IsWidgetClassInViewport(GetWorld(), UDashProgressBarWidget::StaticClass());
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.Owner = this;
+	SpawnParams.Instigator = Cast<APawn>(this);
+	FVector SpawnLoc = GetActorLocation();
+	FRotator SpawnRot = GetActorRotation();
+	
+	APlasmaRifle* CurWeapon = GetWorld()->SpawnActor<APlasmaRifle>(DefaultWeaponClass, SpawnLoc, SpawnRot, SpawnParams);
+
+	if (!CurWeapon)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Failed to spawn weapon"));
+		return;
+	}
+	
+	CurrentWeapon = CurWeapon;
+
+	const FName SocketName(TEXT("GripPoint"));
+	USkeletalMeshComponent* ArmsMesh = nullptr;
+
+	TArray<USkeletalMeshComponent*> Components;
+	GetComponents<USkeletalMeshComponent>(Components);
+	
+	for (UActorComponent* Comp : Components)
+	{
+		USkeletalMeshComponent* Sk = Cast<USkeletalMeshComponent>(Comp);
+		if (Sk && Sk->DoesSocketExist(SocketName))
+		{
+			ArmsMesh = Sk;
+			break;
+		}
+	}
+	
+	if (!ArmsMesh)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("No skeletal mesh with socket %s found on character. Attach weapon to actor root instead."), *SocketName.ToString());
+		CurWeapon->AttachToActor(this, FAttachmentTransformRules::KeepRelativeTransform);
+	}
+	else
+	{
+		CurWeapon->AttachToComponent(ArmsMesh, FAttachmentTransformRules::SnapToTargetNotIncludingScale, SocketName);
+		CurWeapon->SetActorRelativeRotation(FRotator::ZeroRotator); 
+
+		CurWeapon->SetActorRelativeRotation(WeaponRotation);
+
+		CurWeapon->SetActorRelativeLocation(FVector(1.14, 13.54, -10));
+		
+		FName PropName = TEXT("HasRifle");
+		SetHasRifleOnTrue();	
+	}
+
 }
 
 // Called every frame
@@ -126,6 +179,28 @@ void APROVISIONAL_HelltechCharacter::SetupPlayerInputComponent(UInputComponent* 
 			EnhancedInput->BindAction(MovementInputAction, ETriggerEvent::Triggered, this, &APROVISIONAL_HelltechCharacter::DetectMovement);
 			EnhancedInput->BindAction(MovementInputAction, ETriggerEvent::Completed, this, &APROVISIONAL_HelltechCharacter::DetectMovement);
 		}
+		if (FireInputAction)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("FIRE"));
+			EnhancedInput->BindAction(FireInputAction, ETriggerEvent::Triggered, this, &APROVISIONAL_HelltechCharacter::StartFire);
+			EnhancedInput->BindAction(FireInputAction, ETriggerEvent::Completed, this, &APROVISIONAL_HelltechCharacter::StopFire);
+		}
+	}
+}
+
+void APROVISIONAL_HelltechCharacter::StartFire()
+{
+	if (CurrentWeapon)
+	{
+		CurrentWeapon->StartFire();
+	}
+}
+
+void APROVISIONAL_HelltechCharacter::StopFire()
+{
+	if (CurrentWeapon)
+	{
+		CurrentWeapon->StopFire();
 	}
 }
 
